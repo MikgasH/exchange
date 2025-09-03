@@ -19,6 +19,7 @@
         <jacoco.version>0.8.13</jacoco.version>
         <checkstyle.version>3.6.0</checkstyle.version>
         <pmd.version>3.27.0</pmd.version>
+        <swagger.version>2.2.0</swagger.version>
 	</properties>
 	<dependencies>
 		<dependency>
@@ -35,6 +36,18 @@
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-actuator</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>org.springdoc</groupId>
+            <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
+            <version>${swagger.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+            <scope>provided</scope>
         </dependency>
 
 	</dependencies>
