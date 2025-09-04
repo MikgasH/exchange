@@ -1,18 +1,19 @@
 package com.example.cerpshashkin.model;
 
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
-
+import java.math.BigDecimal;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.util.Currency;
 import java.util.Map;
 
-@Data
-@NoArgsConstructor
-@AllArgsConstructor
-public class CurrencyExchangeResponse {
-    private boolean success = true;
-    private long timestamp = System.currentTimeMillis() / 1000;
-    private String base;
-    private String date;
-    private Map<String, Double> rates;
+public record CurrencyExchangeResponse(
+        boolean success,
+        Instant timestamp,
+        Currency base,
+        LocalDate date,
+        Map<Currency, BigDecimal> rates
+) {
+    public static CurrencyExchangeResponse success(Currency base, LocalDate date, Map<Currency, BigDecimal> rates) {
+        return new CurrencyExchangeResponse(true, Instant.now(), base, date, rates);
+    }
 }
