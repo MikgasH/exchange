@@ -13,6 +13,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.List;
+
 @RestController
 @RequestMapping("/api/v1/currencies")
 @RequiredArgsConstructor
@@ -20,6 +22,12 @@ import org.springframework.web.bind.annotation.RestController;
 public class CurrencyController {
 
     private final MockCurrencyService mockCurrencyService;
+
+    @GetMapping
+    public ResponseEntity<List<String>> getCurrencies() {
+        log.info("Class CurrencyController method getCurrencies");
+        return mockCurrencyService.getSupportedCurrencies();
+    }
 
     @GetMapping("/exchange-rates")
     public CurrencyExchangeResponse getExchangeRates() {

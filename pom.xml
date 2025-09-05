@@ -20,6 +20,8 @@
         <checkstyle.version>3.6.0</checkstyle.version>
         <pmd.version>3.27.0</pmd.version>
         <swagger.version>2.2.0</swagger.version>
+        <testcontainers.version>1.21.3</testcontainers.version>
+        <wiremock.version>3.12.1</wiremock.version>
 	</properties>
 	<dependencies>
 
@@ -61,6 +63,32 @@
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>
             <scope>provided</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>testcontainers</artifactId>
+            <version>${testcontainers.version}</version>
+            <scope>test</scope>
+            <exclusions>
+                <exclusion>
+                    <groupId>org.apache.commons</groupId>
+                    <artifactId>commons-compress</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+
+        <dependency>
+            <groupId>org.wiremock</groupId>
+            <artifactId>wiremock-standalone</artifactId>
+            <version>${wiremock.version}</version>
+            <scope>test</scope>
         </dependency>
 
 	</dependencies>

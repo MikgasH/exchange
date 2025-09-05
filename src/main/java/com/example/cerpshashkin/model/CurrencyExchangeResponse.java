@@ -8,12 +8,12 @@ import java.util.Map;
 
 public record CurrencyExchangeResponse(
         boolean success,
-        Instant timestamp,
+        Instant lastUpdated,
         Currency base,
-        LocalDate date,
+        LocalDate rateDate,
         Map<Currency, BigDecimal> rates
 ) {
-    public static CurrencyExchangeResponse success(Currency base, LocalDate date, Map<Currency, BigDecimal> rates) {
-        return new CurrencyExchangeResponse(true, Instant.now(), base, date, rates);
+    public static CurrencyExchangeResponse success(Currency base, LocalDate rateDate, Map<Currency, BigDecimal> rates) {
+        return new CurrencyExchangeResponse(true, Instant.now(), base, rateDate, rates);
     }
 }

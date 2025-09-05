@@ -2,11 +2,13 @@ package com.example.cerpshashkin.service;
 
 import com.example.cerpshashkin.model.CurrencyExchangeResponse;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.Currency;
+import java.util.List;
 import java.util.Map;
 
 @Service
@@ -30,5 +32,12 @@ public class MockCurrencyService {
                 LocalDate.now(),
                 rates
         );
+    }
+
+    public ResponseEntity<List<String>> getSupportedCurrencies() {
+        log.info("Class MockCurrencyService method getSupportedCurrencies");
+
+        List<String> currencies = List.of();
+        return ResponseEntity.ok(currencies);
     }
 }

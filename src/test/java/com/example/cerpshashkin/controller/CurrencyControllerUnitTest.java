@@ -59,4 +59,17 @@ class CurrencyControllerUnitTest {
                 .andExpect(status().isOk())
                 .andExpect(content().string("Currency USD deleted"));
     }
+
+    @Test
+    void getCurrencies() throws Exception {
+        mockMvc.perform(get("/api/v1/currencies"))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void refreshRates() throws Exception {
+        mockMvc.perform(post("/api/v1/currencies/refresh"))
+                .andExpect(status().isOk())
+                .andExpect(content().string("Exchange rates updated"));
+    }
 }

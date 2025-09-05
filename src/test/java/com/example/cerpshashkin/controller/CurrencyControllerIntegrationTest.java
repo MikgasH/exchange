@@ -73,4 +73,26 @@ class CurrencyControllerIntegrationTest {
         );
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
     }
+
+    @Test
+    void getCurrencies() {
+        ResponseEntity<String> response = restTemplate.getForEntity(
+                createUrl(""),
+                String.class
+        );
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+    }
+
+    @Test
+    void refreshRates() {
+        ResponseEntity<String> response = restTemplate.postForEntity(
+                createUrl("/refresh"),
+                null,
+                String.class
+        );
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody()).contains("Exchange rates updated");
+    }
 }
