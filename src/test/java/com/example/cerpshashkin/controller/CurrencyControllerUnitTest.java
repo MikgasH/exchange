@@ -1,6 +1,8 @@
 package com.example.cerpshashkin.controller;
 
+import com.example.cerpshashkin.model.CurrencyEnum;
 import com.example.cerpshashkin.model.CurrencyExchangeResponse;
+import com.example.cerpshashkin.model.Rate;
 import com.example.cerpshashkin.service.MockCurrencyService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -10,8 +12,7 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.util.Currency;
-import java.util.Map;
+import java.util.List;
 
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -32,11 +33,11 @@ class CurrencyControllerUnitTest {
 
     @Test
     void getExchangeRates() throws Exception {
-        Map<Currency, BigDecimal> rates = Map.of(
-                Currency.getInstance("EUR"), BigDecimal.valueOf(0.85)
+        List<Rate> rates = List.of(
+                new Rate(CurrencyEnum.EUR, BigDecimal.valueOf(0.85))
         );
         CurrencyExchangeResponse response = CurrencyExchangeResponse.success(
-                Currency.getInstance("USD"), LocalDate.now(), rates
+                CurrencyEnum.USD, LocalDate.now(), rates
         );
         when(mockCurrencyService.getExchangeRates()).thenReturn(response);
 
