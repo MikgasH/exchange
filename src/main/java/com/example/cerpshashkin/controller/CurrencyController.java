@@ -26,7 +26,8 @@ public class CurrencyController {
     @GetMapping
     public ResponseEntity<List<String>> getCurrencies() {
         log.info("Class CurrencyController method getCurrencies");
-        return mockCurrencyService.getSupportedCurrencies();
+        List<String> currencies = mockCurrencyService.getSupportedCurrencies();
+        return ResponseEntity.ok(currencies);
     }
 
     @GetMapping("/exchange-rates")

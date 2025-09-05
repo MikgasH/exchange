@@ -34,10 +34,9 @@ public class MockCurrencyService {
         );
     }
 
-    public ResponseEntity<List<String>> getSupportedCurrencies() {
+    public List<String> getSupportedCurrencies() {
         log.info("Class MockCurrencyService method getSupportedCurrencies");
 
-        List<String> currencies = List.of();
-        return ResponseEntity.ok(currencies);
+        return List.of();
     }
 }
