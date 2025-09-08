@@ -2,7 +2,6 @@ package com.example.cerpshashkin.controller;
 
 import com.example.cerpshashkin.model.CurrencyEnum;
 import com.example.cerpshashkin.model.CurrencyExchangeResponse;
-import com.example.cerpshashkin.model.Rate;
 import com.example.cerpshashkin.service.MockCurrencyService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -12,7 +11,7 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.util.List;
+import java.util.EnumMap;
 
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -33,9 +32,9 @@ class CurrencyControllerUnitTest {
 
     @Test
     void getExchangeRates() throws Exception {
-        List<Rate> rates = List.of(
-                new Rate(CurrencyEnum.EUR, BigDecimal.valueOf(0.85))
-        );
+        EnumMap<CurrencyEnum, BigDecimal> rates = new EnumMap<>(CurrencyEnum.class);
+        rates.put(CurrencyEnum.EUR, BigDecimal.valueOf(0.85));
+
         CurrencyExchangeResponse response = CurrencyExchangeResponse.success(
                 CurrencyEnum.USD, LocalDate.now(), rates
         );

@@ -1,5 +1,21 @@
 package com.example.cerpshashkin.model;
 
+/**
+ * Enumeration of supported currency codes
+ */
 public enum CurrencyEnum {
-    USD, EUR, GBP, JPY, CAD, CHF, AUD
+    /** United States Dollar. */
+    USD,
+    /** Euro. */
+    EUR,
+    /** British Pound Sterling. */
+    GBP,
+    /** Japanese Yen. */
+    JPY,
+    /** Canadian Dollar. */
+    CAD,
+    /** Swiss Franc. */
+    CHF,
+    /** Australian Dollar. */
+    AUD
 }
