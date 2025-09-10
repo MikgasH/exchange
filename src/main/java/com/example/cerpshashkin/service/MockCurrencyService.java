@@ -1,14 +1,16 @@
 package com.example.cerpshashkin.service;
 
-import com.example.cerpshashkin.model.CurrencyEnum;
 import com.example.cerpshashkin.model.CurrencyExchangeResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.util.EnumMap;
+import java.util.Currency;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 /**
  * Mock implementation of currency exchange service.
@@ -32,27 +34,50 @@ public class MockCurrencyService {
 
     /**
      * Gets current exchange rates for supported currencies.
+     *
+     * @return CurrencyExchangeResponse with current exchange rates
      */
     public CurrencyExchangeResponse getExchangeRates() {
         log.info("Class MockCurrencyService method getExchangeRates");
 
-        EnumMap<CurrencyEnum, BigDecimal> rates = new EnumMap<>(CurrencyEnum.class);
-        rates.put(CurrencyEnum.CAD, CAD_RATE);
-        rates.put(CurrencyEnum.CHF, CHF_RATE);
-        rates.put(CurrencyEnum.EUR, EUR_RATE);
-        rates.put(CurrencyEnum.GBP, GBP_RATE);
-        rates.put(CurrencyEnum.JPY, JPY_RATE);
-        rates.put(CurrencyEnum.AUD, AUD_RATE);
+        final Map<Currency, BigDecimal> rates = new HashMap<>();
+        rates.put(Currency.getInstance("CAD"), CAD_RATE);
+        rates.put(Currency.getInstance("CHF"), CHF_RATE);
+        rates.put(Currency.getInstance("EUR"), EUR_RATE);
+        rates.put(Currency.getInstance("GBP"), GBP_RATE);
+        rates.put(Currency.getInstance("JPY"), JPY_RATE);
+        rates.put(Currency.getInstance("AUD"), AUD_RATE);
 
-        return CurrencyExchangeResponse.success(CurrencyEnum.USD, LocalDate.now(), rates);
+        return CurrencyExchangeResponse.success(
+                Currency.getInstance("USD"),
+                LocalDate.now(),
+                rates
+        );
     }
 
     /**
      * Gets list of supported currencies.
+     * Using a predefined set of major currencies for now.
+     * Later this will be moved to database storage.
+     *
+     * @return list of supported currency codes
      */
     public List<String> getSupportedCurrencies() {
         log.info("Class MockCurrencyService method getSupportedCurrencies");
 
-        return List.of();
+        final Set<Currency> supportedCurrencies = Set.of(
+                Currency.getInstance("USD"),
+                Currency.getInstance("EUR"),
+                Currency.getInstance("GBP"),
+                Currency.getInstance("JPY"),
+                Currency.getInstance("CAD"),
+                Currency.getInstance("CHF"),
+                Currency.getInstance("AUD")
+        );
+
+        return supportedCurrencies.stream()
+                .map(Currency::getCurrencyCode)
+                .sorted()
+                .toList();
     }
 }

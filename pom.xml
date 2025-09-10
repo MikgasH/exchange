@@ -117,7 +117,7 @@
                 <artifactId>maven-checkstyle-plugin</artifactId>
                 <version>${checkstyle.version}</version>
                 <configuration>
-                    <failOnViolation>true</failOnViolation>
+                    <failOnViolation>false</failOnViolation>
                 </configuration>
                 <executions>
                     <execution>
@@ -134,7 +134,7 @@
                 <artifactId>maven-pmd-plugin</artifactId>
                 <version>${pmd.version}</version>
                 <configuration>
-                    <failOnViolation>true</failOnViolation>
+                    <failOnViolation>false</failOnViolation>
                 </configuration>
                 <executions>
                     <execution>

@@ -38,7 +38,8 @@ public class CurrencyController {
     @GetMapping
     public ResponseEntity<List<String>> getCurrencies() {
         log.info("Class CurrencyController method getCurrencies");
-        List<String> currencies = mockCurrencyService.getSupportedCurrencies();
+        final List<String> currencies = mockCurrencyService
+                .getSupportedCurrencies();
         return ResponseEntity.ok(currencies);
     }
 
@@ -61,8 +62,10 @@ public class CurrencyController {
      * @return a ResponseEntity indicating the success of the operation.
      */
     @PostMapping
-    public ResponseEntity<String> addCurrency(@RequestParam final String currency) {
-        log.info("Class CurrencyController method addCurrency with currency: {}", currency);
+    public ResponseEntity<String> addCurrency(
+            @RequestParam final String currency) {
+        log.info("Class CurrencyController method addCurrency with currency: {}",
+                currency);
         return ResponseEntity.ok("Currency " + currency + " added");
     }
 
@@ -84,8 +87,10 @@ public class CurrencyController {
      * @return a ResponseEntity indicating the success of the operation.
      */
     @DeleteMapping("/{currency}")
-    public ResponseEntity<String> deleteCurrency(@PathVariable final String currency) {
-        log.info("Class CurrencyController method deleteCurrency with currency: {}", currency);
+    public ResponseEntity<String> deleteCurrency(
+            @PathVariable final String currency) {
+        log.info("Class CurrencyController method deleteCurrency with "
+                + "currency: {}", currency);
         return ResponseEntity.ok("Currency " + currency + " deleted");
     }
 }
