@@ -10,10 +10,6 @@ import java.time.LocalDate;
 import java.util.Currency;
 import java.util.Map;
 
-/**
- * DTO for ExchangeRatesAPI response (same structure as Fixer.io).
- * Structure matches CurrencyExchangeResponse.
- */
 public record ExchangeRatesApiResponse(
         boolean success,
 

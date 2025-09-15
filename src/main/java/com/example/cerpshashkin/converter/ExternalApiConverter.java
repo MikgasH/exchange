@@ -6,20 +6,10 @@ import com.example.cerpshashkin.model.CurrencyExchangeResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
-/**
- * Converter for transforming external API responses to unified CurrencyExchangeResponse.
- */
 @Component
 @Slf4j
 public class ExternalApiConverter {
 
-    /**
-     * Converts Fixer.io response to CurrencyExchangeResponse format.
-     *
-     * @param fixerResponse the response from Fixer.io API
-     * @return unified CurrencyExchangeResponse
-     * @throws IllegalArgumentException if fixerResponse is null
-     */
     public CurrencyExchangeResponse convertFromFixer(final FixerioResponse fixerResponse) {
         if (fixerResponse == null) {
             throw new IllegalArgumentException("FixerioResponse cannot be null");
@@ -39,13 +29,6 @@ public class ExternalApiConverter {
         );
     }
 
-    /**
-     * Converts ExchangeRatesAPI response to CurrencyExchangeResponse format.
-     *
-     * @param exchangeRatesResponse the response from ExchangeRatesAPI
-     * @return unified CurrencyExchangeResponse
-     * @throws IllegalArgumentException if exchangeRatesResponse is null
-     */
     public CurrencyExchangeResponse convertFromExchangeRates(final ExchangeRatesApiResponse exchangeRatesResponse) {
         if (exchangeRatesResponse == null) {
             throw new IllegalArgumentException("ExchangeRatesApiResponse cannot be null");

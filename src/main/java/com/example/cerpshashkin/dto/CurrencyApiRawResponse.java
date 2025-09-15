@@ -5,9 +5,6 @@ import java.math.BigDecimal;
 import java.time.ZonedDateTime;
 import java.util.Map;
 
-/**
- * Raw response from CurrencyAPI.com
- */
 public record CurrencyApiRawResponse(
         Meta meta,
         Map<String, CurrencyData> data

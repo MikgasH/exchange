@@ -10,9 +10,6 @@ import java.time.LocalDate;
 import java.util.Currency;
 import java.util.Map;
 
-/**
- * DTO for Fixer.io API response with automatic JSON conversion.
- */
 public record FixerioResponse(
         boolean success,
 

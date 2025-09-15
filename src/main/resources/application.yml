@@ -2,11 +2,13 @@ spring:
   application:
     name: CERPS-Hashkin
 
-external:
-  api:
-    fixer-url: http://data.fixer.io/api
-    fixer-access-key: ${FIXER_API_KEY:}
-    exchangerates-url: http://api.exchangeratesapi.io/v1
-    exchangerates-access-key: ${EXCHANGERATES_API_KEY:}
-    currencyapi-url: https://api.currencyapi.com/v3
-    currencyapi-access-key: ${CURRENCYAPI_KEY:}
+api:
+  fixer:
+    url: https://data.fixer.io/api
+    access-key: ${FIXER_API_KEY:}
+  exchangerates:
+    url: https://api.exchangeratesapi.io/v1
+    access-key: ${EXCHANGERATES_API_KEY:}
+  currencyapi:
+    url: https://api.currencyapi.com/v3
+    access-key: ${CURRENCYAPI_KEY:}

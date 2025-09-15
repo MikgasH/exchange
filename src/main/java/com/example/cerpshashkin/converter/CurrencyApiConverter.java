@@ -10,20 +10,13 @@ import java.util.Currency;
 import java.util.HashMap;
 import java.util.Map;
 
-/**
- * Converter for CurrencyAPI (different JSON structure).
- */
 @Component
 @Slf4j
 public class CurrencyApiConverter {
 
-    /**
-     * Converts CurrencyAPI response to CurrencyExchangeResponse format.
-     */
-    public CurrencyExchangeResponse convertToCurrencyExchange(CurrencyApiRawResponse raw) {
+    public CurrencyExchangeResponse convertToCurrencyExchange(final CurrencyApiRawResponse raw) {
         if (raw == null || raw.data() == null) {
-            return new CurrencyExchangeResponse(false,
-                    java.time.Instant.now(), null, null, Map.of());
+            return CurrencyExchangeResponse.failure();
         }
 
         Map<Currency, BigDecimal> rates = new HashMap<>();

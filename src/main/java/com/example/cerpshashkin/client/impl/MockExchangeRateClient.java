@@ -1,6 +1,7 @@
 package com.example.cerpshashkin.client.impl;
 
 import com.example.cerpshashkin.client.ExchangeRateClient;
+import com.example.cerpshashkin.client.ApiProvider;
 import com.example.cerpshashkin.model.CurrencyExchangeResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -14,15 +15,9 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Random;
 
-/**
- * Mock exchange rate client that generates random rates for testing and fallback purposes.
- * Can be used when external APIs are unavailable or API tokens are exhausted.
- */
 @Component
 @Slf4j
 public class MockExchangeRateClient implements ExchangeRateClient {
-
-    private static final String PROVIDER_NAME = "MockAPI";
 
     private final Random random = new Random();
 
@@ -80,14 +75,9 @@ public class MockExchangeRateClient implements ExchangeRateClient {
 
     @Override
     public String getProviderName() {
-        return PROVIDER_NAME;
+        return ApiProvider.MOCK.getDisplayName();
     }
 
-    /**
-     * Generates random exchange rates for all supported currencies except EUR (base currency).
-     *
-     * @return map of currencies to randomized exchange rates
-     */
     private Map<Currency, BigDecimal> generateRandomRates() {
         final Map<Currency, BigDecimal> rates = new HashMap<>();
         BASE_RATES.entrySet().stream()
@@ -96,14 +86,8 @@ public class MockExchangeRateClient implements ExchangeRateClient {
         return rates;
     }
 
-    /**
-     * Generates a random exchange rate based on a base rate with ±20% variation.
-     *
-     * @param baseRate the base rate to vary
-     * @return randomized exchange rate
-     */
     private BigDecimal generateRandomRate(final BigDecimal baseRate) {
-        final double variation = (random.nextDouble() - 0.5) * 0.2; // ±10% variation
+        final double variation = (random.nextDouble() - 0.5) * 0.2;
         return baseRate.multiply(BigDecimal.valueOf(1 + variation))
                 .setScale(6, RoundingMode.HALF_UP);
     }

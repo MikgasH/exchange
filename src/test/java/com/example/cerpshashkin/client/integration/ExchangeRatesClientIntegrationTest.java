@@ -1,6 +1,7 @@
 package com.example.cerpshashkin.client.integration;
 
 import com.example.cerpshashkin.client.impl.ExchangeRatesClient;
+import com.example.cerpshashkin.exception.ExternalApiException;
 import com.example.cerpshashkin.model.CurrencyExchangeResponse;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -25,7 +26,7 @@ class ExchangeRatesClientIntegrationTest extends BaseWireMockTest {
                 .willReturn(aResponse()
                         .withStatus(200)
                         .withHeader("Content-Type", "application/json")
-                        .withBody(FIXER_FORMAT_RESPONSE)));
+                        .withBody(readJsonFile("fixer-exchangerates-success-response.json"))));
 
         CurrencyExchangeResponse result = exchangeRatesClient.getLatestRates();
 
@@ -48,7 +49,7 @@ class ExchangeRatesClientIntegrationTest extends BaseWireMockTest {
                 .willReturn(aResponse()
                         .withStatus(200)
                         .withHeader("Content-Type", "application/json")
-                        .withBody(FIXER_FORMAT_FILTERED_RESPONSE)));
+                        .withBody(readJsonFile("fixer-exchangerates-filtered-response.json"))));
 
         CurrencyExchangeResponse result = exchangeRatesClient.getLatestRates(symbols);
 
@@ -67,10 +68,10 @@ class ExchangeRatesClientIntegrationTest extends BaseWireMockTest {
                 .willReturn(aResponse()
                         .withStatus(500)
                         .withHeader("Content-Type", "application/json")
-                        .withBody(ERROR_RESPONSE)));
+                        .withBody(readJsonFile("error-response.json"))));
 
         assertThatThrownBy(() -> exchangeRatesClient.getLatestRates())
-                .isInstanceOf(RuntimeException.class)
+                .isInstanceOf(ExternalApiException.class)
                 .hasMessageContaining("Failed to fetch latest exchange rates from ExchangeRatesAPI");
     }
 

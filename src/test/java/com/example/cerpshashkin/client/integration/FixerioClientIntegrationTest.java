@@ -25,7 +25,7 @@ class FixerioClientIntegrationTest extends BaseWireMockTest {
                 .willReturn(aResponse()
                         .withStatus(200)
                         .withHeader("Content-Type", "application/json")
-                        .withBody(FIXER_FORMAT_RESPONSE)));
+                        .withBody(readJsonFile("fixer-exchangerates-success-response.json")))); // Добавлено .json
 
         CurrencyExchangeResponse result = fixerioClient.getLatestRates();
 
@@ -48,7 +48,7 @@ class FixerioClientIntegrationTest extends BaseWireMockTest {
                 .willReturn(aResponse()
                         .withStatus(200)
                         .withHeader("Content-Type", "application/json")
-                        .withBody(FIXER_FORMAT_FILTERED_RESPONSE)));
+                        .withBody(readJsonFile("fixer-exchangerates-filtered-response.json"))));
 
         CurrencyExchangeResponse result = fixerioClient.getLatestRates(symbols);
 
@@ -67,7 +67,7 @@ class FixerioClientIntegrationTest extends BaseWireMockTest {
                 .willReturn(aResponse()
                         .withStatus(500)
                         .withHeader("Content-Type", "application/json")
-                        .withBody(ERROR_RESPONSE)));
+                        .withBody(readJsonFile("error-response.json"))));
 
         assertThatThrownBy(() -> fixerioClient.getLatestRates())
                 .isInstanceOf(RuntimeException.class)

@@ -1,0 +1,14 @@
+spring:
+  application:
+    name: CERPS-Hashkin-Test
+
+api:
+  fixer:
+    url: http://localhost:8080/fixer
+    access-key: test-fixer-key
+  exchangerates:
+    url: http://localhost:8080/exchangerates
+    access-key: test-exchangerates-key
+  currencyapi:
+    url: http://localhost:8080/currencyapi
+    access-key: test-currencyapi-key

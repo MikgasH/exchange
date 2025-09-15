@@ -1,6 +1,7 @@
 package com.example.cerpshashkin.client.integration;
 
 import com.example.cerpshashkin.client.impl.CurrencyApiClient;
+import com.example.cerpshashkin.exception.ExternalApiException;
 import com.example.cerpshashkin.model.CurrencyExchangeResponse;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -25,7 +26,7 @@ class CurrencyApiClientIntegrationTest extends BaseWireMockTest {
                 .willReturn(aResponse()
                         .withStatus(200)
                         .withHeader("Content-Type", "application/json")
-                        .withBody(CURRENCY_API_RESPONSE)));
+                        .withBody(readJsonFile("currencyapi-success-response.json"))));
 
         CurrencyExchangeResponse result = currencyApiClient.getLatestRates();
 
@@ -48,7 +49,7 @@ class CurrencyApiClientIntegrationTest extends BaseWireMockTest {
                 .willReturn(aResponse()
                         .withStatus(200)
                         .withHeader("Content-Type", "application/json")
-                        .withBody(CURRENCY_API_FILTERED_RESPONSE)));
+                        .withBody(readJsonFile("currencyapi-filtered-response.json"))));
 
         CurrencyExchangeResponse result = currencyApiClient.getLatestRates(symbols);
 
@@ -63,19 +64,11 @@ class CurrencyApiClientIntegrationTest extends BaseWireMockTest {
 
     @Test
     void getLatestRates_WhenApiReturnsEmptyData_ShouldHandleGracefully() {
-        String emptyDataResponse = """
-                {
-                  "meta": {
-                    "last_updated_at": "2023-06-23T10:04:00Z"
-                  },
-                  "data": {}
-                }""";
-
         stubFor(get(urlEqualTo("/currencyapi/latest?apikey=test-currencyapi-key"))
                 .willReturn(aResponse()
                         .withStatus(200)
                         .withHeader("Content-Type", "application/json")
-                        .withBody(emptyDataResponse)));
+                        .withBody(readJsonFile("currencyapi-empty-response.json"))));
 
         CurrencyExchangeResponse result = currencyApiClient.getLatestRates();
 
@@ -90,10 +83,10 @@ class CurrencyApiClientIntegrationTest extends BaseWireMockTest {
                 .willReturn(aResponse()
                         .withStatus(500)
                         .withHeader("Content-Type", "application/json")
-                        .withBody(ERROR_RESPONSE)));
+                        .withBody(readJsonFile("error-response.json"))));
 
         assertThatThrownBy(() -> currencyApiClient.getLatestRates())
-                .isInstanceOf(RuntimeException.class)
+                .isInstanceOf(ExternalApiException.class)
                 .hasMessageContaining("Failed to fetch latest exchange rates from CurrencyAPI");
     }
 
@@ -114,19 +107,11 @@ class CurrencyApiClientIntegrationTest extends BaseWireMockTest {
     @Test
     void getLatestRates_WithInvalidSymbols_ShouldHandleGracefully() {
         String symbols = "INVALID,NOTREAL";
-        String emptyDataResponse = """
-                {
-                  "meta": {
-                    "last_updated_at": "2023-06-23T10:04:00Z"
-                  },
-                  "data": {}
-                }""";
-
         stubFor(get(urlEqualTo("/currencyapi/latest?apikey=test-currencyapi-key&currencies=INVALID,NOTREAL"))
                 .willReturn(aResponse()
                         .withStatus(200)
                         .withHeader("Content-Type", "application/json")
-                        .withBody(emptyDataResponse)));
+                        .withBody(readJsonFile("currencyapi-empty-response.json"))));
 
         CurrencyExchangeResponse result = currencyApiClient.getLatestRates(symbols);
 
