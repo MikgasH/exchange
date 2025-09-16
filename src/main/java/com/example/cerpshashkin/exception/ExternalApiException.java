@@ -2,24 +2,9 @@ package com.example.cerpshashkin.exception;
 
 public class ExternalApiException extends RuntimeException {
 
-    public ExternalApiException() {
-        super();
-    }
+    private static final String FAILED_OPERATION_TEMPLATE = "Failed to %s from %s";
 
-    public ExternalApiException(final String message) {
-        super(message);
-    }
-
-    public ExternalApiException(final String message, final Throwable cause) {
-        super(message, cause);
-    }
-
-    public ExternalApiException(final Throwable cause) {
-        super(cause);
-    }
-
-    public ExternalApiException(final String message, final Throwable cause,
-                                final boolean enableSuppression, final boolean writableStackTrace) {
-        super(message, cause, enableSuppression, writableStackTrace);
+    public ExternalApiException(final String operation, final String provider, final Throwable cause) {
+        super(String.format(FAILED_OPERATION_TEMPLATE, operation, provider), cause);
     }
 }

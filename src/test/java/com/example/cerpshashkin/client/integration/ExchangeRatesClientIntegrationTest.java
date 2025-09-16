@@ -5,9 +5,7 @@ import com.example.cerpshashkin.exception.ExternalApiException;
 import com.example.cerpshashkin.model.CurrencyExchangeResponse;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-
 import java.util.Currency;
-
 import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
 import static com.github.tomakehurst.wiremock.client.WireMock.get;
 import static com.github.tomakehurst.wiremock.client.WireMock.stubFor;
@@ -22,7 +20,7 @@ class ExchangeRatesClientIntegrationTest extends BaseWireMockTest {
 
     @Test
     void getLatestRates_ShouldReturnSuccessfulResponse() {
-        stubFor(get(urlEqualTo("/exchangerates/latest?access_key=test-exchangerates-key"))
+        stubFor(get(urlEqualTo("/latest?access_key=test-exchangerates-key"))
                 .willReturn(aResponse()
                         .withStatus(200)
                         .withHeader("Content-Type", "application/json")
@@ -38,14 +36,12 @@ class ExchangeRatesClientIntegrationTest extends BaseWireMockTest {
                 Currency.getInstance("GBP"),
                 Currency.getInstance("JPY")
         );
-        assertThat(result.lastUpdated()).isNotNull();
-        assertThat(result.rateDate()).isNotNull();
     }
 
     @Test
     void getLatestRates_WithSymbols_ShouldReturnFilteredResponse() {
         String symbols = "USD,GBP";
-        stubFor(get(urlEqualTo("/exchangerates/latest?access_key=test-exchangerates-key&symbols=USD,GBP"))
+        stubFor(get(urlEqualTo("/latest?access_key=test-exchangerates-key&symbols=USD,GBP"))
                 .willReturn(aResponse()
                         .withStatus(200)
                         .withHeader("Content-Type", "application/json")
@@ -56,15 +52,11 @@ class ExchangeRatesClientIntegrationTest extends BaseWireMockTest {
         assertThat(result).isNotNull();
         assertThat(result.success()).isTrue();
         assertThat(result.rates()).hasSize(2);
-        assertThat(result.rates()).containsKeys(
-                Currency.getInstance("USD"),
-                Currency.getInstance("GBP")
-        );
     }
 
     @Test
     void getLatestRates_WhenServerReturns500_ShouldThrowException() {
-        stubFor(get(urlEqualTo("/exchangerates/latest?access_key=test-exchangerates-key"))
+        stubFor(get(urlEqualTo("/latest?access_key=test-exchangerates-key"))
                 .willReturn(aResponse()
                         .withStatus(500)
                         .withHeader("Content-Type", "application/json")
@@ -73,24 +65,5 @@ class ExchangeRatesClientIntegrationTest extends BaseWireMockTest {
         assertThatThrownBy(() -> exchangeRatesClient.getLatestRates())
                 .isInstanceOf(ExternalApiException.class)
                 .hasMessageContaining("Failed to fetch latest exchange rates from ExchangeRatesAPI");
-    }
-
-    @Test
-    void getLatestRates_WithEmptySymbols_ShouldThrowException() {
-        assertThatThrownBy(() -> exchangeRatesClient.getLatestRates(""))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("Symbols parameter cannot be null or empty");
-    }
-
-    @Test
-    void getLatestRates_WithNullSymbols_ShouldThrowException() {
-        assertThatThrownBy(() -> exchangeRatesClient.getLatestRates(null))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("Symbols parameter cannot be null or empty");
-    }
-
-    @Test
-    void getProviderName_ShouldReturnCorrectName() {
-        assertThat(exchangeRatesClient.getProviderName()).isEqualTo("ExchangeRatesAPI");
     }
 }

@@ -2,6 +2,10 @@ spring:
   application:
     name: CERPS-Hashkin
 
+spring.http.client:
+  connect-timeout: 5s
+  read-timeout: 10s
+
 api:
   fixer:
     url: https://data.fixer.io/api
