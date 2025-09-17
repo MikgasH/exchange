@@ -2,6 +2,7 @@ package com.example.cerpshashkin.client.unit;
 
 import com.example.cerpshashkin.client.impl.ExchangeRatesClient;
 import com.example.cerpshashkin.converter.ExternalApiConverter;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -25,14 +26,17 @@ class ExchangeRatesClientTest {
     @InjectMocks
     private ExchangeRatesClient exchangeRatesClient;
 
+    @AfterEach
+    void tearDown() {
+        verifyNoInteractions(exchangeratesRestClient);
+        verifyNoInteractions(converter);
+    }
+
     @Test
     void getLatestRates_WithEmptySymbols_ShouldThrowException() {
         assertThatThrownBy(() -> exchangeRatesClient.getLatestRates(""))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("Symbols parameter cannot be null or empty");
-
-        verifyNoInteractions(exchangeratesRestClient);
-        verifyNoInteractions(converter);
     }
 
     @Test
@@ -40,9 +44,6 @@ class ExchangeRatesClientTest {
         assertThatThrownBy(() -> exchangeRatesClient.getLatestRates("   "))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("Symbols parameter cannot be null or empty");
-
-        verifyNoInteractions(exchangeratesRestClient);
-        verifyNoInteractions(converter);
     }
 
     @Test

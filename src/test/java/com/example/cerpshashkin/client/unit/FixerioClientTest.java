@@ -2,6 +2,7 @@ package com.example.cerpshashkin.client.unit;
 
 import com.example.cerpshashkin.client.impl.FixerioClient;
 import com.example.cerpshashkin.converter.ExternalApiConverter;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -25,14 +26,17 @@ class FixerioClientTest {
     @InjectMocks
     private FixerioClient fixerioClient;
 
+    @AfterEach
+    void tearDown() {
+        verifyNoInteractions(fixerRestClient);
+        verifyNoInteractions(converter);
+    }
+
     @Test
     void getLatestRates_WithEmptySymbols_ShouldThrowException() {
         assertThatThrownBy(() -> fixerioClient.getLatestRates(""))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("Symbols parameter cannot be null or empty");
-
-        verifyNoInteractions(fixerRestClient);
-        verifyNoInteractions(converter);
     }
 
     @Test
@@ -40,9 +44,6 @@ class FixerioClientTest {
         assertThatThrownBy(() -> fixerioClient.getLatestRates("   "))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("Symbols parameter cannot be null or empty");
-
-        verifyNoInteractions(fixerRestClient);
-        verifyNoInteractions(converter);
     }
 
     @Test
