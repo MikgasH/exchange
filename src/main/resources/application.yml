@@ -2,14 +2,17 @@ spring:
   application:
     name: CERPS-Hashkin
 
-server:
-  port: 8080
+spring.http.client:
+  connect-timeout: 5s
+  read-timeout: 10s
 
-management:
-  endpoints:
-    web:
-      exposure:
-        include: health,info
-  endpoint:
-    health:
-      show-details: always
+api:
+  fixer:
+    url: https://data.fixer.io/api
+    access-key: ${FIXER_API_KEY:}
+  exchangerates:
+    url: https://api.exchangeratesapi.io/v1
+    access-key: ${EXCHANGERATES_API_KEY:}
+  currencyapi:
+    url: https://api.currencyapi.com/v3
+    access-key: ${CURRENCYAPI_KEY:}

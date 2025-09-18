@@ -37,3 +37,9 @@ build/
 *.tmp
 *.swp
 .DS_Store
+
+### Environment variables ###
+.env
+
+### Docker ###
+docker-compose.override.yml

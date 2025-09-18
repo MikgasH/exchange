@@ -1,0 +1,18 @@
+spring:
+  application:
+    name: CERPS-Hashkin-Test
+
+spring.http.client:
+  connect-timeout: 5s
+  read-timeout: 10s
+
+api:
+  fixer:
+    url: http://localhost:8080
+    access-key: test-fixer-key
+  exchangerates:
+    url: http://localhost:8080
+    access-key: test-exchangerates-key
+  currencyapi:
+    url: http://localhost:8080
+    access-key: test-currencyapi-key
