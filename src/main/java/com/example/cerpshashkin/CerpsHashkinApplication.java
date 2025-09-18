@@ -4,6 +4,7 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
 @SpringBootApplication
+//@EnableScheduling
 public class CerpsHashkinApplication {
 
     private CerpsHashkinApplication() {
@@ -13,4 +14,3 @@ public class CerpsHashkinApplication {
         SpringApplication.run(CerpsHashkinApplication.class, args);
     }
 }
-

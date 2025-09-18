@@ -4,6 +4,7 @@ import com.example.cerpshashkin.client.ExchangeRateClient;
 import com.example.cerpshashkin.client.ApiProvider;
 import com.example.cerpshashkin.model.CurrencyExchangeResponse;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 
@@ -17,12 +18,14 @@ import java.util.Random;
 
 @Component
 @Slf4j
+@Order(4)
 public class MockExchangeRateClient implements ExchangeRateClient {
 
     private final Random random = new Random();
 
+    private static final Currency BASE_CURRENCY = Currency.getInstance("USD");
+
     private static final Map<Currency, BigDecimal> BASE_RATES = Map.of(
-            Currency.getInstance("USD"), BigDecimal.valueOf(1.0),
             Currency.getInstance("EUR"), BigDecimal.valueOf(0.85),
             Currency.getInstance("GBP"), BigDecimal.valueOf(0.75),
             Currency.getInstance("JPY"), BigDecimal.valueOf(110.0),
@@ -36,7 +39,7 @@ public class MockExchangeRateClient implements ExchangeRateClient {
         log.info("Mock client generating random exchange rates for all currencies");
 
         return CurrencyExchangeResponse.success(
-                Currency.getInstance("EUR"),
+                BASE_CURRENCY,
                 LocalDate.now(),
                 generateRandomRates()
         );
@@ -53,13 +56,12 @@ public class MockExchangeRateClient implements ExchangeRateClient {
         final Map<Currency, BigDecimal> filteredRates = new HashMap<>();
 
         for (String currencyCode : symbols.split(",")) {
-            currencyCode = currencyCode.trim();
+            currencyCode = currencyCode.trim().toUpperCase();
             try {
                 final Currency currency = Currency.getInstance(currencyCode);
-                if (BASE_RATES.containsKey(currency)) {
+
+                if (!currency.equals(BASE_CURRENCY) && BASE_RATES.containsKey(currency)) {
                     filteredRates.put(currency, generateRandomRate(BASE_RATES.get(currency)));
-                } else {
-                    log.debug("Currency {} not in base rates, skipping", currencyCode);
                 }
             } catch (IllegalArgumentException e) {
                 log.warn("Invalid currency code: {}", currencyCode);
@@ -67,7 +69,7 @@ public class MockExchangeRateClient implements ExchangeRateClient {
         }
 
         return CurrencyExchangeResponse.success(
-                Currency.getInstance("EUR"),
+                BASE_CURRENCY,
                 LocalDate.now(),
                 filteredRates
         );
@@ -80,9 +82,12 @@ public class MockExchangeRateClient implements ExchangeRateClient {
 
     private Map<Currency, BigDecimal> generateRandomRates() {
         final Map<Currency, BigDecimal> rates = new HashMap<>();
-        BASE_RATES.entrySet().stream()
-                .filter(entry -> !Currency.getInstance("EUR").equals(entry.getKey()))
-                .forEach(entry -> rates.put(entry.getKey(), generateRandomRate(entry.getValue())));
+
+        BASE_RATES.forEach((currency, baseRate) ->
+                rates.put(currency, generateRandomRate(baseRate))
+        );
+
+        log.debug("Generated mock rates: {}", rates);
         return rates;
     }
 

@@ -1,4 +1,4 @@
-package com.example.cerpshashkin.client.integration;
+package com.example.cerpshashkin;
 
 import com.github.tomakehurst.wiremock.WireMockServer;
 import com.github.tomakehurst.wiremock.client.WireMock;

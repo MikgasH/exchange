@@ -30,7 +30,7 @@ class ExternalApiConverterTest {
                 Instant.now(),
                 Currency.getInstance("EUR"),
                 LocalDate.now(),
-                Map.of(Currency.getInstance("USD"), BigDecimal.valueOf(1.18))
+                Map.of("USD", BigDecimal.valueOf(1.18))
         );
 
         CurrencyExchangeResponse result = converter.convertFromFixer(fixerResponse);
@@ -66,13 +66,34 @@ class ExternalApiConverterTest {
     }
 
     @Test
+    void convertFromFixer_WithMultipleCurrencies_ShouldProcessAllValidCurrencies() {
+        FixerioResponse fixerResponse = new FixerioResponse(
+                true,
+                Instant.now(),
+                Currency.getInstance("EUR"),
+                LocalDate.now(),
+                Map.of("USD", BigDecimal.valueOf(1.18), "GBP", BigDecimal.valueOf(0.87))
+        );
+
+        CurrencyExchangeResponse result = converter.convertFromFixer(fixerResponse);
+
+        assertThat(result).isNotNull();
+        assertThat(result.success()).isTrue();
+        assertThat(result.rates()).hasSize(2);
+        assertThat(result.rates()).containsKeys(
+                Currency.getInstance("USD"),
+                Currency.getInstance("GBP")
+        );
+    }
+
+    @Test
     void convertFromExchangeRates_WithValidData_ShouldReturnSuccess() {
         ExchangeRatesApiResponse exchangeRatesResponse = new ExchangeRatesApiResponse(
                 true,
                 Instant.now(),
                 Currency.getInstance("EUR"),
                 LocalDate.now(),
-                Map.of(Currency.getInstance("USD"), BigDecimal.valueOf(1.18))
+                Map.of("USD", BigDecimal.valueOf(1.18))
         );
 
         CurrencyExchangeResponse result = converter.convertFromExchangeRates(exchangeRatesResponse);
@@ -105,5 +126,94 @@ class ExternalApiConverterTest {
         assertThatThrownBy(() -> converter.convertFromExchangeRates(null))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("ExchangeRatesApiResponse cannot be null");
+    }
+
+    @Test
+    void convertFromExchangeRates_WithMultipleCurrencies_ShouldProcessAllValidCurrencies() {
+        ExchangeRatesApiResponse exchangeRatesResponse = new ExchangeRatesApiResponse(
+                true,
+                Instant.now(),
+                Currency.getInstance("EUR"),
+                LocalDate.now(),
+                Map.of("USD", BigDecimal.valueOf(1.18), "GBP", BigDecimal.valueOf(0.87))
+        );
+
+        CurrencyExchangeResponse result = converter.convertFromExchangeRates(exchangeRatesResponse);
+
+        assertThat(result).isNotNull();
+        assertThat(result.success()).isTrue();
+        assertThat(result.rates()).hasSize(2);
+        assertThat(result.rates()).containsKeys(
+                Currency.getInstance("USD"),
+                Currency.getInstance("GBP")
+        );
+    }
+
+    @Test
+    void convertFromFixer_WithEmptyRates_ShouldReturnSuccessWithEmptyMap() {
+        FixerioResponse fixerResponse = new FixerioResponse(
+                true,
+                Instant.now(),
+                Currency.getInstance("EUR"),
+                LocalDate.now(),
+                Map.of()
+        );
+
+        CurrencyExchangeResponse result = converter.convertFromFixer(fixerResponse);
+
+        assertThat(result).isNotNull();
+        assertThat(result.success()).isTrue();
+        assertThat(result.rates()).isEmpty();
+    }
+
+    @Test
+    void convertFromExchangeRates_WithEmptyRates_ShouldReturnSuccessWithEmptyMap() {
+        ExchangeRatesApiResponse exchangeRatesResponse = new ExchangeRatesApiResponse(
+                true,
+                Instant.now(),
+                Currency.getInstance("EUR"),
+                LocalDate.now(),
+                Map.of()
+        );
+
+        CurrencyExchangeResponse result = converter.convertFromExchangeRates(exchangeRatesResponse);
+
+        assertThat(result).isNotNull();
+        assertThat(result.success()).isTrue();
+        assertThat(result.rates()).isEmpty();
+    }
+
+    @Test
+    void convertFromFixer_WithNullRates_ShouldReturnSuccessWithEmptyMap() {
+        FixerioResponse fixerResponse = new FixerioResponse(
+                true,
+                Instant.now(),
+                Currency.getInstance("EUR"),
+                LocalDate.now(),
+                null
+        );
+
+        CurrencyExchangeResponse result = converter.convertFromFixer(fixerResponse);
+
+        assertThat(result).isNotNull();
+        assertThat(result.success()).isTrue();
+        assertThat(result.rates()).isEmpty();
+    }
+
+    @Test
+    void convertFromExchangeRates_WithNullRates_ShouldReturnSuccessWithEmptyMap() {
+        ExchangeRatesApiResponse exchangeRatesResponse = new ExchangeRatesApiResponse(
+                true,
+                Instant.now(),
+                Currency.getInstance("EUR"),
+                LocalDate.now(),
+                null
+        );
+
+        CurrencyExchangeResponse result = converter.convertFromExchangeRates(exchangeRatesResponse);
+
+        assertThat(result).isNotNull();
+        assertThat(result.success()).isTrue();
+        assertThat(result.rates()).isEmpty();
     }
 }

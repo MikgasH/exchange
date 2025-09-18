@@ -1,5 +1,6 @@
 package com.example.cerpshashkin.client.integration;
 
+import com.example.cerpshashkin.BaseWireMockTest;
 import com.example.cerpshashkin.client.impl.ExchangeRatesClient;
 import com.example.cerpshashkin.exception.ExternalApiException;
 import com.example.cerpshashkin.model.CurrencyExchangeResponse;
