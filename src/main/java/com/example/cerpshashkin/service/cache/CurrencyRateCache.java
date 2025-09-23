@@ -16,16 +16,16 @@ import java.util.concurrent.ConcurrentHashMap;
 @Slf4j
 public class CurrencyRateCache {
 
-    private final Map<String, CachedRate> cache = new ConcurrentHashMap<>();
-
-    @Value("${cache.exchange-rates.ttl:3600}")
-    private long cacheTtlSeconds;
-
     private static final String LOG_DEBUG_PUT_RATE = "Cached rate {} -> {}: {} from {}";
     private static final String LOG_DEBUG_REMOVED_EXPIRED_RATE = "Removed expired rate for {} -> {}";
     private static final String LOG_DEBUG_RETRIEVED_RATE = "Retrieved cached rate {} -> {}: {}";
     private static final String LOG_INFO_CACHE_CLEARED = "Currency rate cache cleared";
     private static final String KEY_SEPARATOR = "_";
+
+    private final Map<String, CachedRate> cache = new ConcurrentHashMap<>();
+
+    @Value("${cache.exchange-rates.ttl:3600}")
+    private long cacheTtlSeconds;
 
     public void putRate(final Currency from, final Currency to, final BigDecimal rate, final String provider) {
         final String key = createKey(from, to);

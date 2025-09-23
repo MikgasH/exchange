@@ -3,21 +3,22 @@ package com.example.cerpshashkin.controller;
 import com.example.cerpshashkin.dto.ConversionRequest;
 import com.example.cerpshashkin.dto.ConversionResponse;
 import com.example.cerpshashkin.service.CurrencyService;
+import com.example.cerpshashkin.validation.ValidCurrency;
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.Positive;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.math.BigDecimal;
 import java.util.List;
 
 @RestController
@@ -27,8 +28,6 @@ import java.util.List;
 @Validated
 public class CurrencyController {
 
-    private final CurrencyService currencyService;
-
     private static final String LOG_GET_CURRENCIES = "GET /api/v1/currencies - getting supported currencies";
     private static final String LOG_RETURN_CURRENCIES = "Returning {} supported currencies";
     private static final String LOG_ADD_CURRENCY = "POST /api/v1/currencies - adding currency: {}";
@@ -37,7 +36,6 @@ public class CurrencyController {
     private static final String LOG_REMOVED_SUCCESSFULLY = "Currency removed: {}";
     private static final String LOG_CONVERSION_REQUEST = "GET /api/v1/currencies/exchange-rates - converting {} {} to {}";
     private static final String LOG_CONVERSION_SUCCESS = "Conversion successful: {} {} = {} {}";
-    private static final String LOG_CONVERSION_FAILURE = "Conversion failed for {} {} to {}";
     private static final String LOG_REFRESH_RATES = "POST /api/v1/currencies/refresh - refreshing exchange rates";
     private static final String LOG_RATES_REFRESHED = "Exchange rates refreshed successfully";
 
@@ -47,43 +45,46 @@ public class CurrencyController {
 
     private static final String MESSAGE_CURRENCY_PARAM_REQUIRED = "Currency parameter is required";
     private static final String MESSAGE_CURRENCY_PATH_REQUIRED = "Currency path variable is required";
-    private static final String MESSAGE_AMOUNT_POSITIVE = "Amount must be positive";
-    private static final String MESSAGE_FROM_REQUIRED = "From currency is required";
-    private static final String MESSAGE_TO_REQUIRED = "To currency is required";
+
+    private final CurrencyService currencyService;
 
     @GetMapping
     public ResponseEntity<List<String>> getCurrencies() {
         log.info(LOG_GET_CURRENCIES);
-        final List<String> currencies = currencyService.getSupportedCurrencies();
+        List<String> currencies = currencyService.getSupportedCurrencies();
         log.info(LOG_RETURN_CURRENCIES, currencies.size());
         return ResponseEntity.ok(currencies);
     }
 
     @PostMapping
+    @Validated
     public ResponseEntity<String> addCurrency(
             @RequestParam
             @NotBlank(message = MESSAGE_CURRENCY_PARAM_REQUIRED)
+            @ValidCurrency
             final String currency) {
-        log.info(LOG_ADD_CURRENCY, currency);
 
+        log.info(LOG_ADD_CURRENCY, currency);
         currencyService.addCurrency(currency);
 
-        final String message = String.format(MESSAGE_CURRENCY_ADDED, currency.toUpperCase());
+        String message = String.format(MESSAGE_CURRENCY_ADDED, currency.toUpperCase());
         log.info(LOG_ADDED_SUCCESSFULLY, currency);
 
         return ResponseEntity.ok(message);
     }
 
     @DeleteMapping("/{currency}")
+    @Validated
     public ResponseEntity<String> deleteCurrency(
             @PathVariable
             @NotBlank(message = MESSAGE_CURRENCY_PATH_REQUIRED)
+            @ValidCurrency
             final String currency) {
-        log.info(LOG_DELETE_CURRENCY, currency);
 
+        log.info(LOG_DELETE_CURRENCY, currency);
         currencyService.removeCurrency(currency);
 
-        final String message = String.format(MESSAGE_CURRENCY_REMOVED, currency.toUpperCase());
+        String message = String.format(MESSAGE_CURRENCY_REMOVED, currency.toUpperCase());
         log.info(LOG_REMOVED_SUCCESSFULLY, currency);
 
         return ResponseEntity.ok(message);
@@ -91,43 +92,22 @@ public class CurrencyController {
 
     @GetMapping("/exchange-rates")
     public ResponseEntity<ConversionResponse> getExchangeRates(
-            @RequestParam
-            @Positive(message = MESSAGE_AMOUNT_POSITIVE)
-            final BigDecimal amount,
+            @Valid @ModelAttribute final ConversionRequest request) {
 
-            @RequestParam
-            @NotBlank(message = MESSAGE_FROM_REQUIRED)
-            final String from,
+        log.info(LOG_CONVERSION_REQUEST, request.amount(), request.from(), request.to());
 
-            @RequestParam
-            @NotBlank(message = MESSAGE_TO_REQUIRED)
-            final String to) {
+        ConversionResponse response = currencyService.convertCurrency(request);
 
-        log.info(LOG_CONVERSION_REQUEST, amount, from, to);
+        log.info(LOG_CONVERSION_SUCCESS, request.amount(), request.from(),
+                response.convertedAmount(), request.to());
 
-        final ConversionRequest request = ConversionRequest.builder()
-                .amount(amount)
-                .from(from)
-                .to(to)
-                .build();
-
-        final ConversionResponse response = currencyService.convertCurrency(request);
-
-        if (response.success()) {
-            log.info(LOG_CONVERSION_SUCCESS, amount, from, response.convertedAmount(), to);
-            return ResponseEntity.ok(response);
-        } else {
-            log.warn(LOG_CONVERSION_FAILURE, amount, from, to);
-            return ResponseEntity.status(503).body(response);
-        }
+        return ResponseEntity.ok(response);
     }
 
     @PostMapping("/refresh")
     public ResponseEntity<String> refreshRates() {
         log.info(LOG_REFRESH_RATES);
-
         currencyService.refreshExchangeRates();
-
         log.info(LOG_RATES_REFRESHED);
         return ResponseEntity.ok(MESSAGE_RATES_UPDATED);
     }

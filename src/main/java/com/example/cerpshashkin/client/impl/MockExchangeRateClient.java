@@ -21,8 +21,6 @@ import java.util.Random;
 @Order(4)
 public class MockExchangeRateClient implements ExchangeRateClient {
 
-    private final Random random = new Random();
-
     private static final Currency BASE_CURRENCY = Currency.getInstance("USD");
 
     private static final Map<Currency, BigDecimal> BASE_RATES = Map.of(
@@ -34,9 +32,18 @@ public class MockExchangeRateClient implements ExchangeRateClient {
             Currency.getInstance("AUD"), BigDecimal.valueOf(1.35)
     );
 
+    private static final String LOG_INFO_GENERATING_ALL_RATES = "Mock client generating random exchange rates for all currencies";
+    private static final String LOG_INFO_GENERATING_SYMBOLS_RATES = "Mock client generating exchange rates for symbols: {}";
+    private static final String LOG_WARN_INVALID_CURRENCY = "Invalid currency code: {}";
+    private static final String LOG_DEBUG_GENERATED_RATES = "Generated mock rates: {}";
+
+    private static final String ERROR_SYMBOLS_NULL_OR_EMPTY = "Symbols parameter cannot be null or empty";
+
+    private final Random random = new Random();
+
     @Override
     public CurrencyExchangeResponse getLatestRates() {
-        log.info("Mock client generating random exchange rates for all currencies");
+        log.info(LOG_INFO_GENERATING_ALL_RATES);
 
         return CurrencyExchangeResponse.success(
                 BASE_CURRENCY,
@@ -48,10 +55,10 @@ public class MockExchangeRateClient implements ExchangeRateClient {
     @Override
     public CurrencyExchangeResponse getLatestRates(final String symbols) {
         if (!StringUtils.hasText(symbols)) {
-            throw new IllegalArgumentException("Symbols parameter cannot be null or empty");
+            throw new IllegalArgumentException(ERROR_SYMBOLS_NULL_OR_EMPTY);
         }
 
-        log.info("Mock client generating exchange rates for symbols: {}", symbols);
+        log.info(LOG_INFO_GENERATING_SYMBOLS_RATES, symbols);
 
         final Map<Currency, BigDecimal> filteredRates = new HashMap<>();
 
@@ -64,7 +71,7 @@ public class MockExchangeRateClient implements ExchangeRateClient {
                     filteredRates.put(currency, generateRandomRate(BASE_RATES.get(currency)));
                 }
             } catch (IllegalArgumentException e) {
-                log.warn("Invalid currency code: {}", currencyCode);
+                log.warn(LOG_WARN_INVALID_CURRENCY, currencyCode);
             }
         }
 
@@ -87,7 +94,7 @@ public class MockExchangeRateClient implements ExchangeRateClient {
                 rates.put(currency, generateRandomRate(baseRate))
         );
 
-        log.debug("Generated mock rates: {}", rates);
+        log.debug(LOG_DEBUG_GENERATED_RATES, rates);
         return rates;
     }
 

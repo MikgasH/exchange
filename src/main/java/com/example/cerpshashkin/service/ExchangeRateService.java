@@ -17,9 +17,6 @@ import java.util.Optional;
 @RequiredArgsConstructor
 public class ExchangeRateService {
 
-    private final ExchangeRateProviderService providerService;
-    private final CurrencyRateCache cache;
-
     private static final String LOG_DEBUG_GET_RATE = "Getting exchange rate: {} -> {}";
     private static final String LOG_DEBUG_FOUND_CACHED_RATE = "Found cached rate for {} -> {}: {}";
     private static final String LOG_ERROR_GET_RATES = "Failed to get exchange rates from providers";
@@ -33,6 +30,9 @@ public class ExchangeRateService {
     private static final String LOG_ERROR_REFRESH_RATES = "Failed to refresh exchange rates";
     private static final String ERROR_REFRESH_RATES_MESSAGE = "Failed to refresh exchange rates: ";
     private static final String CACHE_PROVIDER_NAME = "ExchangeRateService";
+
+    private final ExchangeRateProviderService providerService;
+    private final CurrencyRateCache cache;
 
     public Optional<BigDecimal> getExchangeRate(final Currency from, final Currency to) {
         log.debug(LOG_DEBUG_GET_RATE, from, to);

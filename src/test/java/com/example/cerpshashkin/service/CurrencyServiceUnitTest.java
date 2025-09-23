@@ -2,7 +2,6 @@ package com.example.cerpshashkin.service;
 
 import com.example.cerpshashkin.dto.ConversionRequest;
 import com.example.cerpshashkin.dto.ConversionResponse;
-import com.example.cerpshashkin.exception.CurrencyNotFoundException;
 import com.example.cerpshashkin.exception.InvalidCurrencyException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -12,12 +11,13 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
 import java.util.List;
-import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class CurrencyServiceUnitTest {
@@ -39,8 +39,9 @@ class CurrencyServiceUnitTest {
     void getSupportedCurrencies_ShouldReturnInitialCurrencies() {
         List<String> result = currencyService.getSupportedCurrencies();
 
-        assertThat(result).containsExactlyInAnyOrder("USD", "EUR", "GBP");
-        assertThat(result).isSorted();
+        assertThat(result)
+                .containsExactlyInAnyOrder("USD", "EUR", "GBP")
+                .isSorted();
     }
 
     @Test
@@ -49,9 +50,9 @@ class CurrencyServiceUnitTest {
 
         currencyService.addCurrency(currency);
 
-        List<String> result = currencyService.getSupportedCurrencies();
-        assertThat(result).contains("NOK");
-        assertThat(result).hasSize(4);
+        assertThat(currencyService.getSupportedCurrencies())
+                .contains("NOK")
+                .hasSize(4);
     }
 
     @Test
@@ -60,9 +61,9 @@ class CurrencyServiceUnitTest {
 
         currencyService.addCurrency(currency);
 
-        List<String> result = currencyService.getSupportedCurrencies();
-        assertThat(result).contains("NOK");
-        assertThat(result).doesNotContain("nok");
+        assertThat(currencyService.getSupportedCurrencies())
+                .contains("NOK")
+                .doesNotContain("nok");
     }
 
     @Test
@@ -71,8 +72,7 @@ class CurrencyServiceUnitTest {
 
         currencyService.addCurrency(currency);
 
-        List<String> result = currencyService.getSupportedCurrencies();
-        assertThat(result).contains("SEK");
+        assertThat(currencyService.getSupportedCurrencies()).contains("SEK");
     }
 
     @Test
@@ -111,9 +111,10 @@ class CurrencyServiceUnitTest {
 
         currencyService.addCurrency(currency);
 
-        List<String> result = currencyService.getSupportedCurrencies();
-        assertThat(result).hasSize(sizeAfterFirstAdd);
-        assertThat(result.stream().filter(c -> c.equals("NOK")).count()).isEqualTo(1);
+        assertThat(currencyService.getSupportedCurrencies())
+                .hasSize(sizeAfterFirstAdd)
+                .filteredOn(c -> c.equals("NOK"))
+                .hasSize(1);
     }
 
     @Test
@@ -123,16 +124,9 @@ class CurrencyServiceUnitTest {
 
         currencyService.removeCurrency(currency);
 
-        List<String> result = currencyService.getSupportedCurrencies();
-        assertThat(result).doesNotContain("USD");
-        assertThat(result).hasSize(2);
-    }
-
-    @Test
-    void removeCurrency_WithNonExistentCurrency_ShouldThrowCurrencyNotFoundException() {
-        assertThatThrownBy(() -> currencyService.removeCurrency("NOTFOUND"))
-                .isInstanceOf(CurrencyNotFoundException.class)
-                .hasMessageContaining("Currency not found: NOTFOUND");
+        assertThat(currencyService.getSupportedCurrencies())
+                .doesNotContain("USD")
+                .hasSize(2);
     }
 
     @Test
@@ -188,8 +182,8 @@ class CurrencyServiceUnitTest {
         assertThat(currencyService.getSupportedCurrencies()).hasSize(5);
 
         currencyService.removeCurrency("EUR");
-        assertThat(currencyService.getSupportedCurrencies()).hasSize(4);
         assertThat(currencyService.getSupportedCurrencies())
+                .hasSize(4)
                 .containsExactlyInAnyOrder("USD", "GBP", "NOK", "SEK");
     }
 }

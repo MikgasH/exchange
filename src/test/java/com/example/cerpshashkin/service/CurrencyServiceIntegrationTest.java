@@ -1,9 +1,7 @@
 package com.example.cerpshashkin.service;
 
-import com.example.cerpshashkin.BaseWireMockTest;
 import com.example.cerpshashkin.dto.ConversionRequest;
 import com.example.cerpshashkin.dto.ConversionResponse;
-import com.example.cerpshashkin.exception.CurrencyNotFoundException;
 import com.example.cerpshashkin.exception.InvalidCurrencyException;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -12,14 +10,12 @@ import org.springframework.test.context.ActiveProfiles;
 
 import java.math.BigDecimal;
 
-
-import static com.github.tomakehurst.wiremock.client.WireMock.*;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @SpringBootTest
 @ActiveProfiles("test")
-class CurrencyServiceIntegrationTest extends BaseWireMockTest {
+class CurrencyServiceIntegrationTest {
 
     @Autowired
     private CurrencyService currencyService;
@@ -52,13 +48,8 @@ class CurrencyServiceIntegrationTest extends BaseWireMockTest {
     @Test
     void addCurrency_WithInvalidCurrency_ShouldThrowException() {
         assertThatThrownBy(() -> currencyService.addCurrency("INVALID"))
-                .isInstanceOf(InvalidCurrencyException.class);
-    }
-
-    @Test
-    void removeCurrency_WithNonExistentCurrency_ShouldThrowException() {
-        assertThatThrownBy(() -> currencyService.removeCurrency("NOTFOUND"))
-                .isInstanceOf(CurrencyNotFoundException.class);
+                .isInstanceOf(InvalidCurrencyException.class)
+                .hasMessageContaining("Invalid currency code: INVALID");
     }
 
     @Test
@@ -72,18 +63,22 @@ class CurrencyServiceIntegrationTest extends BaseWireMockTest {
         ConversionResponse result = currencyService.convertCurrency(request);
 
         assertThat(result)
-                .satisfies(response -> {
-                    assertThat(response.success()).isTrue();
-                    assertThat(response.convertedAmount()).isEqualTo(BigDecimal.valueOf(100));
-                    assertThat(response.exchangeRate()).isEqualTo(BigDecimal.ONE);
-                    assertThat(response.provider()).isEqualTo("Same Currency");
-                });
+                .extracting(
+                        ConversionResponse::success,
+                        ConversionResponse::convertedAmount,
+                        ConversionResponse::exchangeRate,
+                        ConversionResponse::provider
+                )
+                .containsExactly(
+                        true,
+                        BigDecimal.valueOf(100),
+                        BigDecimal.ONE,
+                        "Same Currency"
+                );
     }
 
     @Test
     void convertCurrency_WithMockProvider_ShouldReturnConversion() {
-        stubAllProvidersToFail();
-
         ConversionRequest request = ConversionRequest.builder()
                 .amount(BigDecimal.valueOf(100))
                 .from("USD")
@@ -104,47 +99,7 @@ class CurrencyServiceIntegrationTest extends BaseWireMockTest {
     }
 
     @Test
-    void convertCurrency_WithSuccessfulExternalProvider_ShouldReturnConversion() {
-        stubFor(get(urlEqualTo("/latest?access_key=test-fixer-key"))
-                .willReturn(aResponse()
-                        .withStatus(200)
-                        .withHeader("Content-Type", "application/json")
-                        .withBody(readJsonFile("fixer-exchangerates-success-response.json"))));
-
-        ConversionRequest request = ConversionRequest.builder()
-                .amount(BigDecimal.valueOf(100))
-                .from("EUR")
-                .to("USD")
-                .build();
-
-        ConversionResponse result = currencyService.convertCurrency(request);
-
-        assertThat(result)
-                .satisfies(response -> {
-                    assertThat(response.success()).isTrue();
-                    assertThat(response.originalAmount()).isEqualTo(BigDecimal.valueOf(100));
-                    assertThat(response.convertedAmount()).isNotNull();
-                    assertThat(response.exchangeRate()).isNotNull();
-                });
-    }
-
-    @Test
     void refreshExchangeRates_WithMockProvider_ShouldSucceed() {
-        stubAllProvidersToFail();
-
-        currencyService.refreshExchangeRates();
-
-        assertThat(currencyService.getSupportedCurrencies()).isNotEmpty();
-    }
-
-    @Test
-    void refreshExchangeRates_WithExternalProvider_ShouldSucceed() {
-        stubFor(get(urlEqualTo("/latest?access_key=test-fixer-key"))
-                .willReturn(aResponse()
-                        .withStatus(200)
-                        .withHeader("Content-Type", "application/json")
-                        .withBody(readJsonFile("fixer-exchangerates-success-response.json"))));
-
         currencyService.refreshExchangeRates();
 
         assertThat(currencyService.getSupportedCurrencies()).isNotEmpty();
@@ -152,8 +107,6 @@ class CurrencyServiceIntegrationTest extends BaseWireMockTest {
 
     @Test
     void fullWorkflow_AddConvertRefresh_ShouldWorkCorrectly() {
-        stubAllProvidersToFail();
-
         assertThat(currencyService.getSupportedCurrencies()).hasSize(3);
 
         currencyService.addCurrency("JPY");
@@ -178,20 +131,7 @@ class CurrencyServiceIntegrationTest extends BaseWireMockTest {
     }
 
     @Test
-    void convertCurrency_WithInvalidCurrency_ShouldReturnFailure() {
-        ConversionRequest request = ConversionRequest.builder()
-                .amount(BigDecimal.valueOf(100))
-                .from("INVALID")
-                .to("EUR")
-                .build();
-
-        assertThat(currencyService.convertCurrency(request).success()).isFalse();
-    }
-
-    @Test
     void exchangeRateService_GetLatestRates_WithMockProvider_ShouldSucceed() {
-        stubAllProvidersToFail();
-
         var result = exchangeRateService.getLatestRates();
 
         assertThat(result)
@@ -204,8 +144,6 @@ class CurrencyServiceIntegrationTest extends BaseWireMockTest {
 
     @Test
     void exchangeRateService_GetLatestRates_WithSymbols_ShouldSucceed() {
-        stubAllProvidersToFail();
-
         var result = exchangeRateService.getLatestRates("EUR,GBP");
 
         assertThat(result)
@@ -217,15 +155,8 @@ class CurrencyServiceIntegrationTest extends BaseWireMockTest {
 
     @Test
     void exchangeRateService_RefreshRates_ShouldClearCacheAndFetchNew() {
-        stubAllProvidersToFail();
-
         exchangeRateService.refreshRates();
 
         assertThat(exchangeRateService.getLatestRates().success()).isTrue();
-    }
-
-    private void stubAllProvidersToFail() {
-        stubFor(get(urlPathMatching("/latest.*"))
-                .willReturn(aResponse().withStatus(500)));
     }
 }

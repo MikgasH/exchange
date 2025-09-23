@@ -1,26 +1,21 @@
 package com.example.cerpshashkin.dto;
 
-import jakarta.validation.constraints.NotBlank;
+import com.example.cerpshashkin.validation.ValidCurrency;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
-import jakarta.validation.constraints.Size;
 import lombok.Builder;
 
 import java.math.BigDecimal;
 
 @Builder
 public record ConversionRequest(
-        @NotNull
-        @Positive
+        @NotNull(message = "Amount is required")
+        @Positive(message = "Amount must be greater than 0")
         BigDecimal amount,
 
-        @NotBlank
-        @Size(min = 3, max = 3, message = ConversionRequest.CURRENCY_SIZE_MESSAGE)
+        @ValidCurrency(message = "Invalid source currency code")
         String from,
 
-        @NotBlank
-        @Size(min = 3, max = 3, message = ConversionRequest.CURRENCY_SIZE_MESSAGE)
+        @ValidCurrency(message = "Invalid target currency code")
         String to
-) {
-    public static final String CURRENCY_SIZE_MESSAGE = "Currency code must be exactly 3 characters";
-}
+) {}

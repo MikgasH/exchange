@@ -19,7 +19,7 @@
         <jacoco.version>0.8.13</jacoco.version>
         <checkstyle.version>3.6.0</checkstyle.version>
         <pmd.version>3.27.0</pmd.version>
-        <swagger.version>2.2.0</swagger.version>
+        <swagger.version>2.8.13</swagger.version>
         <testcontainers.version>1.21.3</testcontainers.version>
         <wiremock.version>3.12.1</wiremock.version>
 	</properties>

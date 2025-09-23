@@ -18,9 +18,6 @@ import java.util.concurrent.ConcurrentHashMap;
 @RequiredArgsConstructor
 public class CurrencyService {
 
-    private final CurrencyConversionService conversionService;
-    private final ExchangeRateService exchangeRateService;
-
     private static final String LOG_GET_SUPPORTED = "Getting supported currencies, count: {}";
     private static final String LOG_ADD_CURRENCY = "Adding currency: {}";
     private static final String LOG_CURRENCY_ADDED_SUCCESSFULLY = "Currency {} added successfully";
@@ -28,7 +25,9 @@ public class CurrencyService {
     private static final String LOG_CURRENCY_REMOVED_SUCCESSFULLY = "Currency {} removed successfully";
     private static final String LOG_CONVERT_REQUEST = "Processing currency conversion request";
     private static final String LOG_REFRESH_RATES = "Refreshing exchange rates";
-    private static final String ERROR_CURRENCY_CODE_EMPTY = "Currency code cannot be null or empty";
+
+    private final CurrencyConversionService conversionService;
+    private final ExchangeRateService exchangeRateService;
 
     private final Set<String> supportedCurrencies = initializeSupportedCurrencies();
 
@@ -46,11 +45,7 @@ public class CurrencyService {
     public void addCurrency(final String currencyCode) {
         log.info(LOG_ADD_CURRENCY, currencyCode);
 
-        validateCurrencyCode(currencyCode);
-
-        final String normalizedCode = currencyCode.trim().toUpperCase();
-
-        validateCurrencyExists(normalizedCode);
+        final String normalizedCode = validateAndNormalizeCurrency(currencyCode);
 
         supportedCurrencies.add(normalizedCode);
         log.info(LOG_CURRENCY_ADDED_SUCCESSFULLY, normalizedCode);
@@ -59,9 +54,7 @@ public class CurrencyService {
     public void removeCurrency(final String currencyCode) {
         log.info(LOG_REMOVE_CURRENCY, currencyCode);
 
-        validateCurrencyCode(currencyCode);
-
-        final String normalizedCode = currencyCode.trim().toUpperCase();
+        final String normalizedCode = validateAndNormalizeCurrency(currencyCode);
 
         if (!supportedCurrencies.contains(normalizedCode)) {
             throw new CurrencyNotFoundException(currencyCode);
@@ -81,15 +74,16 @@ public class CurrencyService {
         exchangeRateService.refreshRates();
     }
 
-    private void validateCurrencyCode(final String currencyCode) {
+    private String validateAndNormalizeCurrency(final String currencyCode) {
         if (currencyCode == null || currencyCode.trim().isEmpty()) {
-            throw new InvalidCurrencyException(ERROR_CURRENCY_CODE_EMPTY);
+            throw new InvalidCurrencyException("Currency code cannot be null or empty");
         }
-    }
 
-    private void validateCurrencyExists(final String currencyCode) {
+        final String normalized = currencyCode.trim().toUpperCase();
+
         try {
-            Currency.getInstance(currencyCode);
+            Currency.getInstance(normalized);
+            return normalized;
         } catch (IllegalArgumentException e) {
             throw new InvalidCurrencyException(currencyCode);
         }

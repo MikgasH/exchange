@@ -20,9 +20,4 @@ public record ConversionResponse(
         );
     }
 
-    public static ConversionResponse failure(final BigDecimal originalAmount, final String from, final String to) {
-        return new ConversionResponse(
-                false, originalAmount, from, to, null, null, Instant.now(), null
-        );
-    }
 }

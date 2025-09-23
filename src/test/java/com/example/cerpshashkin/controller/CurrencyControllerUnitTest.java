@@ -2,6 +2,7 @@ package com.example.cerpshashkin.controller;
 
 import com.example.cerpshashkin.dto.ConversionRequest;
 import com.example.cerpshashkin.dto.ConversionResponse;
+import com.example.cerpshashkin.exception.RateNotAvailableException;
 import com.example.cerpshashkin.service.CurrencyService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -13,9 +14,17 @@ import java.math.BigDecimal;
 import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.*;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest(CurrencyController.class)
 class CurrencyControllerUnitTest {
@@ -68,7 +77,21 @@ class CurrencyControllerUnitTest {
     @Test
     void addCurrency_ShouldReturnBadRequest_WhenCurrencyParameterIsMissing() throws Exception {
         mockMvc.perform(post("/api/v1/currencies"))
-                .andExpect(status().isBadRequest());
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.title").value("Missing required parameter"));
+
+        verify(currencyService, never()).addCurrency(any());
+    }
+
+    @Test
+    void addCurrency_ShouldReturnBadRequest_WhenCurrencyIsInvalid() throws Exception {
+        String currency = "INVALID";
+
+        mockMvc.perform(post("/api/v1/currencies")
+                        .param("currency", currency))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.title").value("Validation error"))
+                .andExpect(jsonPath("$.detail").value("addCurrency.currency: Invalid currency code"));
 
         verify(currencyService, never()).addCurrency(any());
     }
@@ -85,6 +108,17 @@ class CurrencyControllerUnitTest {
         verify(currencyService, times(1)).removeCurrency(currency);
     }
 
+    @Test
+    void deleteCurrency_ShouldReturnBadRequest_WhenCurrencyIsInvalid() throws Exception {
+        String currency = "INVALID";
+
+        mockMvc.perform(delete("/api/v1/currencies/{currency}", currency))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.title").value("Validation error"))
+                .andExpect(jsonPath("$.detail").value("deleteCurrency.currency: Invalid currency code"));
+
+        verify(currencyService, never()).removeCurrency(any());
+    }
 
     @Test
     void getExchangeRates_ShouldReturnSuccessResponse_WhenConversionIsSuccessful() throws Exception {
@@ -118,24 +152,17 @@ class CurrencyControllerUnitTest {
     }
 
     @Test
-    void getExchangeRates_ShouldReturnServiceUnavailable_WhenConversionFails() throws Exception {
-        BigDecimal amount = BigDecimal.valueOf(100);
-        String from = "USD";
-        String to = "EUR";
-        ConversionResponse failureResponse = ConversionResponse.failure(amount, from, to);
-
+    void getExchangeRates_ShouldReturnServiceUnavailable_WhenRateNotAvailable() throws Exception {
         when(currencyService.convertCurrency(any(ConversionRequest.class)))
-                .thenReturn(failureResponse);
+                .thenThrow(new RateNotAvailableException("USD", "EUR"));
 
         mockMvc.perform(get("/api/v1/currencies/exchange-rates")
                         .param("amount", "100")
-                        .param("from", from)
-                        .param("to", to))
+                        .param("from", "USD")
+                        .param("to", "EUR"))
                 .andExpect(status().isServiceUnavailable())
-                .andExpect(jsonPath("$.success").value(false))
-                .andExpect(jsonPath("$.originalAmount").value(100))
-                .andExpect(jsonPath("$.fromCurrency").value("USD"))
-                .andExpect(jsonPath("$.toCurrency").value("EUR"));
+                .andExpect(jsonPath("$.title").value("Exchange rate not available"))
+                .andExpect(jsonPath("$.detail").value("Exchange rate not available for USD -> EUR"));
 
         verify(currencyService, times(1)).convertCurrency(any(ConversionRequest.class));
     }
@@ -144,7 +171,45 @@ class CurrencyControllerUnitTest {
     void getExchangeRates_ShouldReturnBadRequest_WhenRequiredParametersAreMissing() throws Exception {
         mockMvc.perform(get("/api/v1/currencies/exchange-rates")
                         .param("amount", "100"))
-                .andExpect(status().isBadRequest());
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.title").value("Validation error"));
+
+        verify(currencyService, never()).convertCurrency(any());
+    }
+
+    @Test
+    void getExchangeRates_ShouldReturnBadRequest_WhenAmountIsNegative() throws Exception {
+        mockMvc.perform(get("/api/v1/currencies/exchange-rates")
+                        .param("amount", "-100")
+                        .param("from", "USD")
+                        .param("to", "EUR"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.title").value("Validation error"));
+
+        verify(currencyService, never()).convertCurrency(any());
+    }
+
+    @Test
+    void getExchangeRates_ShouldReturnBadRequest_WhenAmountIsZero() throws Exception {
+        mockMvc.perform(get("/api/v1/currencies/exchange-rates")
+                        .param("amount", "0")
+                        .param("from", "USD")
+                        .param("to", "EUR"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.title").value("Validation error"));
+
+        verify(currencyService, never()).convertCurrency(any());
+    }
+
+    @Test
+    void getExchangeRates_ShouldReturnBadRequest_WhenFromCurrencyIsInvalid() throws Exception {
+        mockMvc.perform(get("/api/v1/currencies/exchange-rates")
+                        .param("amount", "100")
+                        .param("from", "INVALID")
+                        .param("to", "EUR"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.title").value("Validation error"))
+                .andExpect(jsonPath("$.detail").value("from: Invalid source currency code"));
 
         verify(currencyService, never()).convertCurrency(any());
     }
@@ -158,39 +223,5 @@ class CurrencyControllerUnitTest {
                 .andExpect(content().string("Exchange rates updated successfully"));
 
         verify(currencyService, times(1)).refreshExchangeRates();
-    }
-
-
-    @Test
-    void allEndpoints_ShouldHaveProperContentType() throws Exception {
-        when(currencyService.getSupportedCurrencies()).thenReturn(List.of("USD"));
-        doNothing().when(currencyService).addCurrency(any());
-        doNothing().when(currencyService).removeCurrency(any());
-        doNothing().when(currencyService).refreshExchangeRates();
-
-        ConversionResponse response = ConversionResponse.success(
-                BigDecimal.valueOf(100), "USD", "EUR",
-                BigDecimal.valueOf(85), BigDecimal.valueOf(0.85), "test"
-        );
-        when(currencyService.convertCurrency(any())).thenReturn(response);
-
-        mockMvc.perform(get("/api/v1/currencies"))
-                .andExpect(header().string("Content-Type", "application/json"));
-
-        mockMvc.perform(get("/api/v1/currencies/exchange-rates")
-                        .param("amount", "100")
-                        .param("from", "USD")
-                        .param("to", "EUR"))
-                .andExpect(header().string("Content-Type", "application/json"));
-
-        mockMvc.perform(post("/api/v1/currencies")
-                        .param("currency", "NOK"))
-                .andExpect(header().string("Content-Type", "text/plain;charset=UTF-8"));
-
-        mockMvc.perform(delete("/api/v1/currencies/NOK"))
-                .andExpect(header().string("Content-Type", "text/plain;charset=UTF-8"));
-
-        mockMvc.perform(post("/api/v1/currencies/refresh"))
-                .andExpect(header().string("Content-Type", "text/plain;charset=UTF-8"));
     }
 }

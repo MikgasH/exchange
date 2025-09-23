@@ -2,8 +2,8 @@ package com.example.cerpshashkin.service;
 
 import com.example.cerpshashkin.dto.ConversionRequest;
 import com.example.cerpshashkin.dto.ConversionResponse;
-import com.example.cerpshashkin.exception.ExchangeRateNotAvailableException;
 import com.example.cerpshashkin.exception.InvalidCurrencyException;
+import com.example.cerpshashkin.exception.RateNotAvailableException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -15,9 +15,10 @@ import java.util.Currency;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class CurrencyConversionServiceUnitTest {
@@ -68,7 +69,7 @@ class CurrencyConversionServiceUnitTest {
     }
 
     @Test
-    void convertCurrency_WithNoExchangeRateAvailable_ShouldReturnFailure() {
+    void convertCurrency_WithNoExchangeRateAvailable_ShouldThrowException() {
         final ConversionRequest request = ConversionRequest.builder()
                 .amount(BigDecimal.valueOf(100))
                 .from("USD")
@@ -78,56 +79,48 @@ class CurrencyConversionServiceUnitTest {
         when(exchangeRateService.getExchangeRate(any(Currency.class), any(Currency.class)))
                 .thenReturn(Optional.empty());
 
-        final ConversionResponse result = conversionService.convertCurrency(request);
-
-        assertThat(result.success()).isFalse();
-        assertThat(result.originalAmount()).isEqualTo(BigDecimal.valueOf(100));
-        assertThat(result.fromCurrency()).isEqualTo("USD");
-        assertThat(result.toCurrency()).isEqualTo("EUR");
-        assertThat(result.convertedAmount()).isNull();
-        assertThat(result.exchangeRate()).isNull();
+        assertThatThrownBy(() -> conversionService.convertCurrency(request))
+                .isInstanceOf(RateNotAvailableException.class)
+                .hasMessageContaining("Exchange rate not available for USD -> EUR");
     }
 
     @Test
-    void convertCurrency_WithInvalidFromCurrency_ShouldReturnFailure() {
+    void convertCurrency_WithInvalidFromCurrency_ShouldThrowException() {
         final ConversionRequest request = ConversionRequest.builder()
                 .amount(BigDecimal.valueOf(100))
                 .from("INVALID")
                 .to("EUR")
                 .build();
 
-        final ConversionResponse result = conversionService.convertCurrency(request);
-
-        assertThat(result.success()).isFalse();
-        assertThat(result.originalAmount()).isEqualTo(BigDecimal.valueOf(100));
-        assertThat(result.fromCurrency()).isEqualTo("INVALID");
-        assertThat(result.toCurrency()).isEqualTo("EUR");
+        assertThatThrownBy(() -> conversionService.convertCurrency(request))
+                .isInstanceOf(InvalidCurrencyException.class)
+                .hasMessageContaining("Invalid currency code: INVALID");
     }
 
     @Test
-    void convertCurrency_WithNullFromCurrency_ShouldReturnFailure() {
+    void convertCurrency_WithNullFromCurrency_ShouldThrowException() {
         final ConversionRequest request = ConversionRequest.builder()
                 .amount(BigDecimal.valueOf(100))
                 .from(null)
                 .to("EUR")
                 .build();
 
-        final ConversionResponse result = conversionService.convertCurrency(request);
-
-        assertThat(result.success()).isFalse();
+        assertThatThrownBy(() -> conversionService.convertCurrency(request))
+                .isInstanceOf(InvalidCurrencyException.class)
+                .hasMessageContaining("Currency code cannot be null or empty");
     }
 
     @Test
-    void convertCurrency_WithEmptyFromCurrency_ShouldReturnFailure() {
+    void convertCurrency_WithEmptyFromCurrency_ShouldThrowException() {
         final ConversionRequest request = ConversionRequest.builder()
                 .amount(BigDecimal.valueOf(100))
                 .from("")
                 .to("EUR")
                 .build();
 
-        final ConversionResponse result = conversionService.convertCurrency(request);
-
-        assertThat(result.success()).isFalse();
+        assertThatThrownBy(() -> conversionService.convertCurrency(request))
+                .isInstanceOf(InvalidCurrencyException.class)
+                .hasMessageContaining("Currency code cannot be null or empty");
     }
 
     @Test
@@ -183,7 +176,7 @@ class CurrencyConversionServiceUnitTest {
     }
 
     @Test
-    void convertCurrency_WithExchangeRateServiceException_ShouldReturnFailure() {
+    void convertCurrency_WithExchangeRateServiceException_ShouldPropagateException() {
         final ConversionRequest request = ConversionRequest.builder()
                 .amount(BigDecimal.valueOf(100))
                 .from("USD")
@@ -193,8 +186,8 @@ class CurrencyConversionServiceUnitTest {
         when(exchangeRateService.getExchangeRate(any(Currency.class), any(Currency.class)))
                 .thenThrow(new RuntimeException("Service unavailable"));
 
-        final ConversionResponse result = conversionService.convertCurrency(request);
-
-        assertThat(result.success()).isFalse();
+        assertThatThrownBy(() -> conversionService.convertCurrency(request))
+                .isInstanceOf(RuntimeException.class)
+                .hasMessage("Service unavailable");
     }
 }
