@@ -20,9 +20,10 @@ public class CurrencyConversionService {
 
     private static final String SAME_CURRENCY_PROVIDER = "Same Currency";
     private static final String CONVERSION_SERVICE_PROVIDER = "CurrencyConversionService";
-
     private static final String LOG_CONVERTING = "Converting {} {} to {}";
     private static final String LOG_CONVERSION_SUCCESS = "Conversion successful: {} {} = {} {} (rate: {})";
+    private static final int SCALE = 6;
+    private static final String ERROR_CURRENCY_NULL_OR_EMPTY = "Currency code cannot be null or empty";
 
     private final ExchangeRateService exchangeRateService;
 
@@ -32,26 +33,28 @@ public class CurrencyConversionService {
         final Currency fromCurrency = parseCurrency(request.from());
         final Currency toCurrency = parseCurrency(request.to());
 
-        if (fromCurrency.equals(toCurrency)) {
-            return createSameCurrencyResponse(request);
-        }
-
-        final Optional<BigDecimal> exchangeRateOpt = exchangeRateService.getExchangeRate(fromCurrency, toCurrency);
-
-        if (exchangeRateOpt.isEmpty()) {
-            throw new RateNotAvailableException(request.from(), request.to());
-        }
-
-        return createSuccessfulConversionResponse(request, exchangeRateOpt.get());
+        return Optional.of(fromCurrency)
+                .filter(from -> from.equals(toCurrency))
+                .map(from -> createSameCurrencyResponse(request))
+                .orElseGet(() -> exchangeRateService.getExchangeRate(fromCurrency, toCurrency)
+                        .map(rate -> createSuccessfulConversionResponse(request, rate))
+                        .orElseThrow(() -> new RateNotAvailableException(request.from(), request.to()))
+                );
     }
 
     private Currency parseCurrency(final String currencyCode) {
-        if (currencyCode == null || currencyCode.trim().isEmpty()) {
-            throw new InvalidCurrencyException("Currency code cannot be null or empty");
+        if (currencyCode == null) {
+            throw new InvalidCurrencyException(ERROR_CURRENCY_NULL_OR_EMPTY);
+        }
+
+        final String trimmed = currencyCode.trim();
+
+        if (trimmed.isEmpty()) {
+            throw new InvalidCurrencyException(ERROR_CURRENCY_NULL_OR_EMPTY);
         }
 
         try {
-            return Currency.getInstance(currencyCode.trim().toUpperCase());
+            return Currency.getInstance(trimmed.toUpperCase());
         } catch (IllegalArgumentException e) {
             throw new InvalidCurrencyException(currencyCode);
         }
@@ -68,11 +71,13 @@ public class CurrencyConversionService {
         );
     }
 
-    private ConversionResponse createSuccessfulConversionResponse(final ConversionRequest request,
-                                                                  final BigDecimal exchangeRate) {
+    private ConversionResponse createSuccessfulConversionResponse(
+            final ConversionRequest request,
+            final BigDecimal exchangeRate) {
+
         final BigDecimal convertedAmount = request.amount()
                 .multiply(exchangeRate)
-                .setScale(6, RoundingMode.HALF_UP);
+                .setScale(SCALE, RoundingMode.HALF_UP);
 
         log.info(LOG_CONVERSION_SUCCESS,
                 request.amount(), request.from(), convertedAmount, request.to(), exchangeRate);

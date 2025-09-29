@@ -32,8 +32,14 @@ public class CurrencyApiClient implements ExchangeRateClient {
     private static final String FETCHING_LATEST_LOG = "Fetching latest rates from {}";
     private static final String FETCHING_SYMBOLS_LOG = "Fetching rates for symbols {} from {}";
     private static final String REQUEST_LOG = "Making request to CurrencyAPI: {}";
+    private static final String SUCCESS_LOG = "Successfully received response from CurrencyAPI";
 
     private static final String SYMBOLS_VALIDATION_ERROR = "Symbols parameter cannot be null or empty";
+    private static final String NULL_RESPONSE_ERROR = "Null response received";
+    private static final String NULL_DATA_ERROR = "Response data is null";
+    private static final String EMPTY_DATA_ERROR = "Empty data received";
+    private static final String INVALID_META_ERROR = "Invalid meta information";
+    private static final String HTTP_ERROR_PREFIX = "HTTP error: ";
 
     @Value("${api.currencyapi.access-key}")
     private String currencyapiAccessKey;
@@ -67,23 +73,22 @@ public class CurrencyApiClient implements ExchangeRateClient {
 
         final CurrencyApiRawResponse response = currencyapiRestClient.get()
                 .uri(uriBuilder -> {
-                    var builder = uriBuilder
-                            .path(ENDPOINT)
+                    uriBuilder.path(ENDPOINT)
                             .queryParam(API_KEY_PARAM, currencyapiAccessKey);
-                    symbolsOpt.ifPresent(s -> builder.queryParam(CURRENCIES_PARAM, s));
-                    return builder.build();
+                    symbolsOpt.ifPresent(s -> uriBuilder.queryParam(CURRENCIES_PARAM, s));
+                    return uriBuilder.build();
                 })
                 .retrieve()
                 .onStatus(status -> !status.is2xxSuccessful(),
                         (request, httpResponse) -> {
                             throw new ExternalApiException(operation, getProviderName(),
-                                    "HTTP error: " + httpResponse.getStatusCode());
+                                    HTTP_ERROR_PREFIX + httpResponse.getStatusCode());
                         })
                 .body(CurrencyApiRawResponse.class);
 
         validateResponse(response, operation);
 
-        log.debug("Successfully received response from CurrencyAPI");
+        log.debug(SUCCESS_LOG);
         return converter.convertToCurrencyExchange(response);
     }
 
@@ -94,21 +99,18 @@ public class CurrencyApiClient implements ExchangeRateClient {
     }
 
     private void validateResponse(final CurrencyApiRawResponse response, final String operation) {
-        if (response == null) {
-            throw new ExternalApiException(operation, getProviderName(), "Null response received");
-        }
+        final CurrencyApiRawResponse validResponse = Optional.ofNullable(response)
+                .orElseThrow(() -> new ExternalApiException(operation, getProviderName(), NULL_RESPONSE_ERROR));
 
-        if (response.data() == null) {
-            throw new ExternalApiException(operation, getProviderName(), "Response data is null");
-        }
+        Optional.ofNullable(validResponse.data())
+                .orElseThrow(() -> new ExternalApiException(operation, getProviderName(), NULL_DATA_ERROR));
 
-        if (response.data().isEmpty()) {
-            throw new ExternalApiException(operation, getProviderName(), "Empty data received");
-        }
+        Optional.of(validResponse.data())
+                .filter(data -> !data.isEmpty())
+                .orElseThrow(() -> new ExternalApiException(operation, getProviderName(), EMPTY_DATA_ERROR));
 
-        if (response.meta() == null) {
-            throw new ExternalApiException(operation, getProviderName(), "Invalid meta information");
-        }
+        Optional.ofNullable(validResponse.meta())
+                .orElseThrow(() -> new ExternalApiException(operation, getProviderName(), INVALID_META_ERROR));
     }
 
     @Override

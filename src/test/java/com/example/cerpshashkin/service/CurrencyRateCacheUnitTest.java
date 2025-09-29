@@ -145,4 +145,39 @@ class CurrencyRateCacheUnitTest {
 
         assertThat(cache.getRate(usd, eur)).isEmpty();
     }
+
+    @Test
+    void getRate_WithExpiredDirectRate_ShouldRemoveAndCheckInverse() {
+        cache.putRate(usd, eur, BigDecimal.valueOf(0.85), "Provider1");
+        cache.putRate(eur, usd, BigDecimal.valueOf(1.18), "Provider2");
+
+        ReflectionTestUtils.setField(cache, "cacheTtlSeconds", -1L);
+
+        Optional<CachedRate> result = cache.getRate(usd, eur);
+
+        assertThat(result).isEmpty();
+    }
+
+    @Test
+    void getRate_WithOnlyExpiredInverseRate_ShouldReturnEmpty() {
+        ReflectionTestUtils.setField(cache, "cacheTtlSeconds", -1L);
+
+        cache.putRate(eur, usd, BigDecimal.valueOf(1.18), "Provider");
+
+        Optional<CachedRate> result = cache.getRate(usd, eur);
+
+        assertThat(result).isEmpty();
+    }
+
+    @Test
+    void putRate_WithMultipleCalls_ShouldOverwritePrevious() {
+        cache.putRate(usd, eur, BigDecimal.valueOf(0.85), "Provider1");
+        cache.putRate(usd, eur, BigDecimal.valueOf(0.87), "Provider2");
+
+        Optional<CachedRate> result = cache.getRate(usd, eur);
+
+        assertThat(result).isPresent();
+        assertThat(result.get().rate()).isEqualByComparingTo("0.87");
+        assertThat(result.get().provider()).isEqualTo("Provider2");
+    }
 }

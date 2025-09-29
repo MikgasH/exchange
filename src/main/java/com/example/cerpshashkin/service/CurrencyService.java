@@ -25,6 +25,7 @@ public class CurrencyService {
     private static final String LOG_CURRENCY_REMOVED_SUCCESSFULLY = "Currency {} removed successfully";
     private static final String LOG_CONVERT_REQUEST = "Processing currency conversion request";
     private static final String LOG_REFRESH_RATES = "Refreshing exchange rates";
+    private static final String ERROR_CURRENCY_NULL_OR_EMPTY = "Currency code cannot be null or empty";
 
     private final CurrencyConversionService conversionService;
     private final ExchangeRateService exchangeRateService;
@@ -76,7 +77,7 @@ public class CurrencyService {
 
     private String validateAndNormalizeCurrency(final String currencyCode) {
         if (currencyCode == null || currencyCode.trim().isEmpty()) {
-            throw new InvalidCurrencyException("Currency code cannot be null or empty");
+            throw new InvalidCurrencyException(ERROR_CURRENCY_NULL_OR_EMPTY);
         }
 
         final String normalized = currencyCode.trim().toUpperCase();

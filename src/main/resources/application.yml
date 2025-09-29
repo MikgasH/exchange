@@ -7,7 +7,9 @@ spring.http.client:
   read-timeout: 10s
 
 scheduling:
-  enabled: false
+  enabled: true
+  exchange-rates:
+    rate: 3600000
 
 api:
   fixer:

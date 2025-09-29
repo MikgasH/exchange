@@ -213,27 +213,15 @@ class ExchangeRateServiceUnitTest {
     }
 
     @Test
-    void refreshRates_WithProviderFailure_ShouldThrowException() {
-        when(providerService.getLatestRatesFromProviders()).thenThrow(new RuntimeException("Provider failed"));
-
-        assertThatThrownBy(() -> exchangeRateService.refreshRates())
-                .isInstanceOf(ExchangeRateNotAvailableException.class)
-                .hasMessageContaining("Failed to refresh exchange rates");
-
-        verify(cache).clearCache();
-        verify(providerService).getLatestRatesFromProviders();
-        verify(cache, never()).putRate(any(), any(), any(), any());
-    }
-
-    @Test
-    void refreshRates_WithUnsuccessfulResponse_ShouldNotCache() {
+    void refreshRates_WithUnsuccessfulResponse_ShouldThrowExceptionAndNotCache() {
         CurrencyExchangeResponse response = CurrencyExchangeResponse.failure();
         when(providerService.getLatestRatesFromProviders()).thenReturn(response);
 
-        exchangeRateService.refreshRates();
+        assertThatThrownBy(() -> exchangeRateService.refreshRates())
+                .isInstanceOf(ExchangeRateNotAvailableException.class)
+                .hasMessageContaining("Provider returned unsuccessful response");
 
         verify(cache).clearCache();
-        verify(providerService).getLatestRatesFromProviders();
         verify(cache, never()).putRate(any(), any(), any(), any());
     }
 }

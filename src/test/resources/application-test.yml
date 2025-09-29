@@ -2,9 +2,8 @@ spring:
   application:
     name: CERPS-Hashkin-Test
 
-spring.http.client:
-  connect-timeout: 5s
-  read-timeout: 10s
+scheduling:
+  enabled: false
 
 api:
   fixer:
