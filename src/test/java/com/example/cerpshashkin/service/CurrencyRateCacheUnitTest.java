@@ -30,14 +30,12 @@ class CurrencyRateCacheUnitTest {
     @Test
     void putRate_ShouldStoreRateSuccessfully() {
         BigDecimal rate = BigDecimal.valueOf(0.85);
-        String provider = "TestProvider";
 
-        cache.putRate(usd, eur, rate, provider);
+        cache.putRate(usd, eur, rate);
 
         Optional<CachedRate> result = cache.getRate(usd, eur);
         assertThat(result).isPresent();
         assertThat(result.get().rate()).isEqualTo(rate);
-        assertThat(result.get().provider()).isEqualTo(provider);
         assertThat(result.get().timestamp()).isBeforeOrEqualTo(Instant.now());
     }
 
@@ -53,14 +51,12 @@ class CurrencyRateCacheUnitTest {
     @Test
     void getRate_WithValidRate_ShouldReturnCachedRate() {
         BigDecimal rate = BigDecimal.valueOf(0.85);
-        String provider = "TestProvider";
-        cache.putRate(usd, eur, rate, provider);
+        cache.putRate(usd, eur, rate);
 
         Optional<CachedRate> result = cache.getRate(usd, eur);
 
         assertThat(result).isPresent();
         assertThat(result.get().rate()).isEqualTo(rate);
-        assertThat(result.get().provider()).isEqualTo(provider);
     }
 
     @Test
@@ -68,8 +64,7 @@ class CurrencyRateCacheUnitTest {
         ReflectionTestUtils.setField(cache, "cacheTtlSeconds", -1L);
 
         BigDecimal rate = BigDecimal.valueOf(0.85);
-        String provider = "TestProvider";
-        cache.putRate(usd, eur, rate, provider);
+        cache.putRate(usd, eur, rate);
 
         Optional<CachedRate> result = cache.getRate(usd, eur);
 
@@ -78,8 +73,8 @@ class CurrencyRateCacheUnitTest {
 
     @Test
     void clearCache_ShouldRemoveAllRates() {
-        cache.putRate(usd, eur, BigDecimal.valueOf(0.85), "Provider1");
-        cache.putRate(eur, usd, BigDecimal.valueOf(1.18), "Provider2");
+        cache.putRate(usd, eur, BigDecimal.valueOf(0.85));
+        cache.putRate(eur, usd, BigDecimal.valueOf(1.18));
 
         assertThat(cache.getRate(usd, eur)).isPresent();
         assertThat(cache.getRate(eur, usd)).isPresent();
@@ -94,10 +89,9 @@ class CurrencyRateCacheUnitTest {
     void putRate_WithDifferentPairs_ShouldStoreSeparately() {
         BigDecimal usdToEur = BigDecimal.valueOf(0.85);
         BigDecimal eurToUsd = BigDecimal.valueOf(1.18);
-        String provider = "TestProvider";
 
-        cache.putRate(usd, eur, usdToEur, provider);
-        cache.putRate(eur, usd, eurToUsd, provider);
+        cache.putRate(usd, eur, usdToEur);
+        cache.putRate(eur, usd, eurToUsd);
 
         Optional<CachedRate> result1 = cache.getRate(usd, eur);
         Optional<CachedRate> result2 = cache.getRate(eur, usd);
@@ -110,12 +104,11 @@ class CurrencyRateCacheUnitTest {
 
     @Test
     void putRate_WithSamePairTwice_ShouldOverwritePrevious() {
-        String provider = "TestProvider";
         BigDecimal oldRate = BigDecimal.valueOf(0.85);
         BigDecimal newRate = BigDecimal.valueOf(0.87);
 
-        cache.putRate(usd, eur, oldRate, provider);
-        cache.putRate(usd, eur, newRate, provider);
+        cache.putRate(usd, eur, oldRate);
+        cache.putRate(usd, eur, newRate);
 
         Optional<CachedRate> result = cache.getRate(usd, eur);
 
@@ -128,9 +121,9 @@ class CurrencyRateCacheUnitTest {
         Currency gbp = Currency.getInstance("GBP");
         Currency jpy = Currency.getInstance("JPY");
 
-        cache.putRate(usd, eur, BigDecimal.valueOf(0.85), "Provider1");
-        cache.putRate(usd, gbp, BigDecimal.valueOf(0.75), "Provider2");
-        cache.putRate(usd, jpy, BigDecimal.valueOf(110.0), "Provider3");
+        cache.putRate(usd, eur, BigDecimal.valueOf(0.85));
+        cache.putRate(usd, gbp, BigDecimal.valueOf(0.75));
+        cache.putRate(usd, jpy, BigDecimal.valueOf(110.0));
 
         assertThat(cache.getRate(usd, eur).get().rate()).isEqualTo(BigDecimal.valueOf(0.85));
         assertThat(cache.getRate(usd, gbp).get().rate()).isEqualTo(BigDecimal.valueOf(0.75));
@@ -141,28 +134,17 @@ class CurrencyRateCacheUnitTest {
     void cache_WithNegativeTtl_ShouldExpireImmediately() {
         ReflectionTestUtils.setField(cache, "cacheTtlSeconds", -1L);
 
-        cache.putRate(usd, eur, BigDecimal.valueOf(0.85), "TestProvider");
+        cache.putRate(usd, eur, BigDecimal.valueOf(0.85));
 
         assertThat(cache.getRate(usd, eur)).isEmpty();
     }
 
     @Test
-    void getRate_WithExpiredDirectRate_ShouldRemoveAndCheckInverse() {
-        cache.putRate(usd, eur, BigDecimal.valueOf(0.85), "Provider1");
-        cache.putRate(eur, usd, BigDecimal.valueOf(1.18), "Provider2");
+    void getRate_WithExpiredDirectRate_ShouldRemoveAndReturnEmpty() {
+        cache.putRate(usd, eur, BigDecimal.valueOf(0.85));
+        cache.putRate(eur, usd, BigDecimal.valueOf(1.18));
 
         ReflectionTestUtils.setField(cache, "cacheTtlSeconds", -1L);
-
-        Optional<CachedRate> result = cache.getRate(usd, eur);
-
-        assertThat(result).isEmpty();
-    }
-
-    @Test
-    void getRate_WithOnlyExpiredInverseRate_ShouldReturnEmpty() {
-        ReflectionTestUtils.setField(cache, "cacheTtlSeconds", -1L);
-
-        cache.putRate(eur, usd, BigDecimal.valueOf(1.18), "Provider");
 
         Optional<CachedRate> result = cache.getRate(usd, eur);
 
@@ -171,13 +153,12 @@ class CurrencyRateCacheUnitTest {
 
     @Test
     void putRate_WithMultipleCalls_ShouldOverwritePrevious() {
-        cache.putRate(usd, eur, BigDecimal.valueOf(0.85), "Provider1");
-        cache.putRate(usd, eur, BigDecimal.valueOf(0.87), "Provider2");
+        cache.putRate(usd, eur, BigDecimal.valueOf(0.85));
+        cache.putRate(usd, eur, BigDecimal.valueOf(0.87));
 
         Optional<CachedRate> result = cache.getRate(usd, eur);
 
         assertThat(result).isPresent();
         assertThat(result.get().rate()).isEqualByComparingTo("0.87");
-        assertThat(result.get().provider()).isEqualTo("Provider2");
     }
 }

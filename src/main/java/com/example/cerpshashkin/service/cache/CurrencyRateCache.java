@@ -6,7 +6,6 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.time.Instant;
 import java.util.Currency;
 import java.util.Map;
@@ -17,33 +16,25 @@ import java.util.concurrent.ConcurrentHashMap;
 @Slf4j
 public class CurrencyRateCache {
 
-    private static final String LOG_DEBUG_PUT_RATE = "Cached rate {} -> {}: {} from {}";
+    private static final String LOG_DEBUG_PUT_RATE = "Cached rate {} -> {}: {}";
     private static final String LOG_DEBUG_REMOVED_EXPIRED_RATE = "Removed expired rate for {} -> {}";
     private static final String LOG_DEBUG_RETRIEVED_RATE = "Retrieved cached rate {} -> {}: {}";
-    private static final String LOG_DEBUG_RETRIEVED_INVERSE_RATE = "Retrieved inverse cached rate {} -> {}: {} (from reverse pair)";
     private static final String LOG_INFO_CACHE_CLEARED = "Currency rate cache cleared";
     private static final String KEY_SEPARATOR = "_";
-    private static final String INVERTED_PROVIDER_SUFFIX = " (inverted)";
-    private static final int SCALE = 6;
 
     private final Map<String, CachedRate> cache = new ConcurrentHashMap<>();
 
     @Value("${cache.exchange-rates.ttl:3600}")
     private long cacheTtlSeconds;
 
-    public void putRate(final Currency from, final Currency to, final BigDecimal rate, final String provider) {
+    public void putRate(final Currency from, final Currency to, final BigDecimal rate) {
         final String key = createKey(from, to);
-        final CachedRate cachedRate = new CachedRate(rate, provider, Instant.now());
+        final CachedRate cachedRate = new CachedRate(rate, Instant.now());
         cache.put(key, cachedRate);
-        log.debug(LOG_DEBUG_PUT_RATE, from, to, rate, provider);
+        log.debug(LOG_DEBUG_PUT_RATE, from, to, rate);
     }
 
     public Optional<CachedRate> getRate(final Currency from, final Currency to) {
-        return getDirectRate(from, to)
-                .or(() -> getInverseRate(from, to));
-    }
-
-    private Optional<CachedRate> getDirectRate(final Currency from, final Currency to) {
         final String key = createKey(from, to);
 
         return Optional.ofNullable(cache.get(key))
@@ -55,34 +46,6 @@ public class CurrencyRateCache {
                     }
                     log.debug(LOG_DEBUG_RETRIEVED_RATE, from, to, cachedRate.rate());
                     return Optional.of(cachedRate);
-                });
-    }
-
-    private Optional<CachedRate> getInverseRate(final Currency from, final Currency to) {
-        final String reverseKey = createKey(to, from);
-
-        return Optional.ofNullable(cache.get(reverseKey))
-                .flatMap(reverseCachedRate -> {
-                    if (isExpired(reverseCachedRate)) {
-                        cache.remove(reverseKey);
-                        log.debug(LOG_DEBUG_REMOVED_EXPIRED_RATE, to, from);
-                        return Optional.empty();
-                    }
-
-                    final BigDecimal inverseRate = BigDecimal.ONE.divide(
-                            reverseCachedRate.rate(),
-                            SCALE,
-                            RoundingMode.HALF_UP
-                    );
-
-                    final CachedRate invertedRate = new CachedRate(
-                            inverseRate,
-                            reverseCachedRate.provider() + INVERTED_PROVIDER_SUFFIX,
-                            reverseCachedRate.timestamp()
-                    );
-
-                    log.debug(LOG_DEBUG_RETRIEVED_INVERSE_RATE, from, to, inverseRate);
-                    return Optional.of(invertedRate);
                 });
     }
 

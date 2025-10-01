@@ -25,3 +25,6 @@ api:
 cache:
   exchange-rates:
     ttl: 3600
+
+exchange-rates:
+  base-currency: EUR

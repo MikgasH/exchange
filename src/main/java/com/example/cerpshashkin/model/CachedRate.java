@@ -5,6 +5,5 @@ import java.time.Instant;
 
 public record CachedRate(
         BigDecimal rate,
-        String provider,
         Instant timestamp
 ) {}

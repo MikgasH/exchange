@@ -4,7 +4,6 @@ import com.example.cerpshashkin.client.ExchangeRateClient;
 import com.example.cerpshashkin.client.ApiProvider;
 import com.example.cerpshashkin.model.CurrencyExchangeResponse;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 
@@ -18,7 +17,6 @@ import java.util.Random;
 
 @Component
 @Slf4j
-@Order(4)
 public class MockExchangeRateClient implements ExchangeRateClient {
 
     private static final Currency BASE_CURRENCY = Currency.getInstance("USD");

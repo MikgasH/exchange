@@ -6,6 +6,7 @@ import com.example.cerpshashkin.exception.AllProvidersFailedException;
 import com.example.cerpshashkin.model.CurrencyExchangeResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -28,12 +29,14 @@ public class ExchangeRateProviderService {
     private static final String COLLECTING_RATES_MESSAGE = "Collecting rates from all available providers";
     private static final String COLLECTED_RATES_MESSAGE = "Collected rates from {} providers";
     private static final String SELECTING_BEST_RATES_MESSAGE = "Selecting median rates for {} currency pairs";
-    private static final String NORMALIZING_TO_BASE_MESSAGE = "Normalizing {} responses to common base: {}";
+    private static final String NORMALIZING_TO_BASE_MESSAGE = "Normalizing {} responses to base currency: {}";
     private static final String USING_FALLBACK_MESSAGE = "All real providers failed, using fallback provider";
     private static final String MEDIAN_EMPTY_LIST_ERROR = "Cannot calculate median of empty list";
     private static final String LOG_WARN_CONVERSION_RATE_NOT_FOUND = "Cannot find conversion rate from {} to {}, skipping normalization";
-    private static final Currency DEFAULT_BASE_CURRENCY = Currency.getInstance("USD");
     private static final int SCALE = 6;
+
+    @Value("${exchange-rates.base-currency:EUR}")
+    private String baseCurrencyCode;
 
     private final List<ExchangeRateClient> clients;
 
@@ -101,7 +104,7 @@ public class ExchangeRateProviderService {
     }
 
     private CurrencyExchangeResponse selectMedianRates(final List<CurrencyExchangeResponse> allResponses) {
-        final Currency targetBase = determineTargetBaseCurrency(allResponses);
+        final Currency targetBase = getTargetBaseCurrency();
 
         log.info(NORMALIZING_TO_BASE_MESSAGE, allResponses.size(), targetBase);
 
@@ -133,14 +136,8 @@ public class ExchangeRateProviderService {
         );
     }
 
-    private Currency determineTargetBaseCurrency(final List<CurrencyExchangeResponse> responses) {
-        return responses.stream()
-                .map(CurrencyExchangeResponse::base)
-                .collect(Collectors.groupingBy(currency -> currency, Collectors.counting()))
-                .entrySet().stream()
-                .max(Map.Entry.comparingByValue())
-                .map(Map.Entry::getKey)
-                .orElse(DEFAULT_BASE_CURRENCY);
+    private Currency getTargetBaseCurrency() {
+        return Currency.getInstance(baseCurrencyCode);
     }
 
     private Optional<Map<Currency, BigDecimal>> normalizeRatesToBase(

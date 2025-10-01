@@ -1,13 +1,15 @@
 package com.example.cerpshashkin.service;
 
+import com.example.cerpshashkin.client.ApiProvider;
 import com.example.cerpshashkin.client.ExchangeRateClient;
 import com.example.cerpshashkin.exception.AllProvidersFailedException;
 import com.example.cerpshashkin.model.CurrencyExchangeResponse;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -25,262 +27,205 @@ import static org.mockito.Mockito.when;
 @ExtendWith(MockitoExtension.class)
 class ExchangeRateProviderServiceUnitTest {
 
-    @Mock
-    private ExchangeRateClient client1;
+    private static final Currency EUR = Currency.getInstance("EUR");
+    private static final Currency USD = Currency.getInstance("USD");
+    private static final Currency GBP = Currency.getInstance("GBP");
+    private static final LocalDate TEST_DATE = LocalDate.of(2025, 10, 1);
 
     @Mock
-    private ExchangeRateClient client2;
+    private ExchangeRateClient fixerClient;
 
     @Mock
-    private ExchangeRateClient client3;
+    private ExchangeRateClient exchangeRatesClient;
 
-    @InjectMocks
+    @Mock
+    private ExchangeRateClient currencyApiClient;
+
+    @Mock
+    private ExchangeRateClient mockClient;
+
     private ExchangeRateProviderService providerService;
+
+    @BeforeEach
+    void setUp() {
+        when(fixerClient.getProviderName()).thenReturn(ApiProvider.FIXER.getDisplayName());
+        when(exchangeRatesClient.getProviderName()).thenReturn(ApiProvider.EXCHANGE_RATES.getDisplayName());
+        when(currencyApiClient.getProviderName()).thenReturn(ApiProvider.CURRENCY_API.getDisplayName());
+        when(mockClient.getProviderName()).thenReturn(ApiProvider.MOCK.getDisplayName());
+
+        List<ExchangeRateClient> clients = List.of(fixerClient, exchangeRatesClient, currencyApiClient, mockClient);
+        providerService = new ExchangeRateProviderService(clients);
+        ReflectionTestUtils.setField(providerService, "baseCurrencyCode", "EUR");
+    }
 
     @Test
     void getLatestRatesFromProviders_WithAllProvidersSuccess_ShouldReturnMedianRates() {
         CurrencyExchangeResponse response1 = CurrencyExchangeResponse.success(
-                Currency.getInstance("USD"), LocalDate.now(),
-                Map.of(Currency.getInstance("EUR"), BigDecimal.valueOf(0.85))
+                EUR, TEST_DATE, Map.of(USD, BigDecimal.valueOf(1.17))
         );
         CurrencyExchangeResponse response2 = CurrencyExchangeResponse.success(
-                Currency.getInstance("USD"), LocalDate.now(),
-                Map.of(Currency.getInstance("EUR"), BigDecimal.valueOf(0.87))
+                EUR, TEST_DATE, Map.of(USD, BigDecimal.valueOf(1.18))
         );
         CurrencyExchangeResponse response3 = CurrencyExchangeResponse.success(
-                Currency.getInstance("USD"), LocalDate.now(),
-                Map.of(Currency.getInstance("EUR"), BigDecimal.valueOf(0.86))
+                EUR, TEST_DATE, Map.of(USD, BigDecimal.valueOf(1.19))
         );
 
-        when(client1.getProviderName()).thenReturn("Provider1");
-        when(client1.getLatestRates()).thenReturn(response1);
-        when(client2.getProviderName()).thenReturn("Provider2");
-        when(client2.getLatestRates()).thenReturn(response2);
-        when(client3.getProviderName()).thenReturn("Provider3");
-        when(client3.getLatestRates()).thenReturn(response3);
-
-        providerService = new ExchangeRateProviderService(List.of(client1, client2, client3));
+        when(fixerClient.getLatestRates()).thenReturn(response1);
+        when(exchangeRatesClient.getLatestRates()).thenReturn(response2);
+        when(currencyApiClient.getLatestRates()).thenReturn(response3);
 
         CurrencyExchangeResponse result = providerService.getLatestRatesFromProviders();
 
-        assertThat(result).isNotNull();
         assertThat(result.success()).isTrue();
-        assertThat(result.base()).isEqualTo(Currency.getInstance("USD"));
-        assertThat(result.rates()).containsKeys(
-                Currency.getInstance("EUR")
-        );
-        assertThat(result.rates().get(Currency.getInstance("EUR")))
-                .isEqualByComparingTo(BigDecimal.valueOf(0.86));
+        assertThat(result.base()).isEqualTo(EUR);
+        assertThat(result.rates()).containsEntry(USD, BigDecimal.valueOf(1.18));
+        verify(mockClient, never()).getLatestRates();
     }
 
     @Test
     void getLatestRatesFromProviders_WithOneProviderFail_ShouldUseOthers() {
+        CurrencyExchangeResponse response1 = CurrencyExchangeResponse.success(
+                EUR, TEST_DATE, Map.of(USD, BigDecimal.valueOf(1.17))
+        );
         CurrencyExchangeResponse response2 = CurrencyExchangeResponse.success(
-                Currency.getInstance("USD"), LocalDate.now(),
-                Map.of(Currency.getInstance("EUR"), BigDecimal.valueOf(0.87))
-        );
-        CurrencyExchangeResponse response3 = CurrencyExchangeResponse.success(
-                Currency.getInstance("USD"), LocalDate.now(),
-                Map.of(Currency.getInstance("EUR"), BigDecimal.valueOf(0.86))
+                EUR, TEST_DATE, Map.of(USD, BigDecimal.valueOf(1.19))
         );
 
-        when(client1.getProviderName()).thenReturn("Provider1");
-        when(client1.getLatestRates()).thenThrow(new RuntimeException("Provider1 failed"));
-        when(client2.getProviderName()).thenReturn("Provider2");
-        when(client2.getLatestRates()).thenReturn(response2);
-        when(client3.getProviderName()).thenReturn("Provider3");
-        when(client3.getLatestRates()).thenReturn(response3);
-
-        providerService = new ExchangeRateProviderService(List.of(client1, client2, client3));
+        when(fixerClient.getLatestRates()).thenThrow(new RuntimeException("Fixer failed"));
+        when(exchangeRatesClient.getLatestRates()).thenReturn(response1);
+        when(currencyApiClient.getLatestRates()).thenReturn(response2);
 
         CurrencyExchangeResponse result = providerService.getLatestRatesFromProviders();
 
-        assertThat(result).isNotNull();
         assertThat(result.success()).isTrue();
-        assertThat(result.rates().get(Currency.getInstance("EUR")))
-                .isEqualByComparingTo(new BigDecimal("0.865000"));
-
-        verify(client1).getLatestRates();
-        verify(client2).getLatestRates();
-        verify(client3).getLatestRates();
+        assertThat(result.base()).isEqualTo(EUR);
+        assertThat(result.rates().get(USD)).isEqualByComparingTo(new BigDecimal("1.18"));
     }
 
     @Test
     void getLatestRatesFromProviders_WithUnsuccessfulResponse_ShouldIgnoreIt() {
-        CurrencyExchangeResponse failureResponse = CurrencyExchangeResponse.failure();
         CurrencyExchangeResponse successResponse = CurrencyExchangeResponse.success(
-                Currency.getInstance("USD"), LocalDate.now(),
-                Map.of(Currency.getInstance("EUR"), BigDecimal.valueOf(0.87))
+                EUR, TEST_DATE, Map.of(USD, BigDecimal.valueOf(1.18))
         );
+        CurrencyExchangeResponse failureResponse = CurrencyExchangeResponse.failure();
 
-        when(client1.getProviderName()).thenReturn("Provider1");
-        when(client1.getLatestRates()).thenReturn(failureResponse);
-        when(client2.getProviderName()).thenReturn("Provider2");
-        when(client2.getLatestRates()).thenReturn(successResponse);
-        when(client3.getProviderName()).thenReturn("Provider3");
-        when(client3.getLatestRates()).thenReturn(successResponse);
-
-        providerService = new ExchangeRateProviderService(List.of(client1, client2, client3));
+        when(fixerClient.getLatestRates()).thenReturn(failureResponse);
+        when(exchangeRatesClient.getLatestRates()).thenReturn(successResponse);
+        when(currencyApiClient.getLatestRates()).thenReturn(successResponse);
 
         CurrencyExchangeResponse result = providerService.getLatestRatesFromProviders();
 
-        assertThat(result).isNotNull();
         assertThat(result.success()).isTrue();
-
-        verify(client1).getLatestRates();
-        verify(client2).getLatestRates();
-        verify(client3).getLatestRates();
+        assertThat(result.rates().get(USD)).isEqualByComparingTo(new BigDecimal("1.18"));
     }
 
     @Test
-    void getLatestRatesFromProviders_WithAllProvidersFail_ShouldThrowException() {
-        when(client1.getProviderName()).thenReturn("Provider1");
-        when(client1.getLatestRates()).thenThrow(new RuntimeException("Provider1 failed"));
-        when(client2.getProviderName()).thenReturn("Provider2");
-        when(client2.getLatestRates()).thenThrow(new RuntimeException("Provider2 failed"));
-        when(client3.getProviderName()).thenReturn("Provider3");
-        when(client3.getLatestRates()).thenThrow(new RuntimeException("Provider3 failed"));
+    void getLatestRatesFromProviders_WithAllProvidersFail_ShouldUseMock() {
+        CurrencyExchangeResponse mockResponse = CurrencyExchangeResponse.success(
+                EUR, TEST_DATE, Map.of(USD, BigDecimal.valueOf(1.20))
+        );
 
-        providerService = new ExchangeRateProviderService(List.of(client1, client2, client3));
+        when(fixerClient.getLatestRates()).thenThrow(new RuntimeException("Failed"));
+        when(exchangeRatesClient.getLatestRates()).thenThrow(new RuntimeException("Failed"));
+        when(currencyApiClient.getLatestRates()).thenThrow(new RuntimeException("Failed"));
+        when(mockClient.getLatestRates()).thenReturn(mockResponse);
 
-        assertThatThrownBy(() -> providerService.getLatestRatesFromProviders())
-                .isInstanceOf(AllProvidersFailedException.class)
-                .hasMessageContaining("All exchange rate providers failed")
-                .hasMessageContaining("Provider1")
-                .hasMessageContaining("Provider2")
-                .hasMessageContaining("Provider3");
+        CurrencyExchangeResponse result = providerService.getLatestRatesFromProviders();
 
-        verify(client1).getLatestRates();
-        verify(client2).getLatestRates();
-        verify(client3).getLatestRates();
+        assertThat(result.success()).isTrue();
+        assertThat(result.rates()).containsEntry(USD, BigDecimal.valueOf(1.20));
+        verify(mockClient).getLatestRates();
     }
 
     @Test
     void getLatestRatesFromProviders_WithSymbols_ShouldCallCorrectMethod() {
-        String symbols = "EUR,GBP";
-        CurrencyExchangeResponse successResponse = CurrencyExchangeResponse.success(
-                Currency.getInstance("USD"), LocalDate.now(),
-                Map.of(Currency.getInstance("EUR"), BigDecimal.valueOf(0.87))
+        String symbols = "USD,GBP";
+        CurrencyExchangeResponse response = CurrencyExchangeResponse.success(
+                EUR, TEST_DATE, Map.of(USD, BigDecimal.valueOf(1.18))
         );
 
-        when(client1.getProviderName()).thenReturn("Provider1");
-        when(client1.getLatestRates(symbols)).thenReturn(successResponse);
-        when(client2.getProviderName()).thenReturn("Provider2");
-        when(client2.getLatestRates(symbols)).thenReturn(successResponse);
-        when(client3.getProviderName()).thenReturn("Provider3");
-        when(client3.getLatestRates(symbols)).thenReturn(successResponse);
-
-        providerService = new ExchangeRateProviderService(List.of(client1, client2, client3));
+        when(fixerClient.getLatestRates(symbols)).thenReturn(response);
+        when(exchangeRatesClient.getLatestRates(symbols)).thenReturn(response);
+        when(currencyApiClient.getLatestRates(symbols)).thenReturn(response);
 
         CurrencyExchangeResponse result = providerService.getLatestRatesFromProviders(symbols);
 
-        assertThat(result).isNotNull();
         assertThat(result.success()).isTrue();
-
-        verify(client1).getLatestRates(symbols);
-        verify(client1, never()).getLatestRates();
-        verify(client2).getLatestRates(symbols);
-        verify(client3).getLatestRates(symbols);
+        verify(fixerClient).getLatestRates(symbols);
+        verify(exchangeRatesClient).getLatestRates(symbols);
+        verify(currencyApiClient).getLatestRates(symbols);
     }
 
     @Test
     void getLatestRatesFromProviders_WithNullSymbols_ShouldCallDefaultMethod() {
-        CurrencyExchangeResponse successResponse = CurrencyExchangeResponse.success(
-                Currency.getInstance("USD"), LocalDate.now(),
-                Map.of(Currency.getInstance("EUR"), BigDecimal.valueOf(0.87))
+        CurrencyExchangeResponse response = CurrencyExchangeResponse.success(
+                EUR, TEST_DATE, Map.of(USD, BigDecimal.valueOf(1.18))
         );
 
-        when(client1.getProviderName()).thenReturn("Provider1");
-        when(client1.getLatestRates()).thenReturn(successResponse);
-        when(client2.getProviderName()).thenReturn("Provider2");
-        when(client2.getLatestRates()).thenReturn(successResponse);
-        when(client3.getProviderName()).thenReturn("Provider3");
-        when(client3.getLatestRates()).thenReturn(successResponse);
-
-        providerService = new ExchangeRateProviderService(List.of(client1, client2, client3));
+        when(fixerClient.getLatestRates()).thenReturn(response);
+        when(exchangeRatesClient.getLatestRates()).thenReturn(response);
+        when(currencyApiClient.getLatestRates()).thenReturn(response);
 
         CurrencyExchangeResponse result = providerService.getLatestRatesFromProviders(null);
 
-        assertThat(result).isNotNull();
         assertThat(result.success()).isTrue();
-
-        verify(client1).getLatestRates();
-        verify(client1, never()).getLatestRates(any(String.class));
-        verify(client2).getLatestRates();
-        verify(client3).getLatestRates();
+        verify(fixerClient).getLatestRates();
+        verify(fixerClient, never()).getLatestRates(any(String.class));
     }
 
     @Test
     void getLatestRatesFromProviders_WithMixedFailures_ShouldReturnMedianFromSuccessful() {
-        String symbols = "EUR,GBP";
-        CurrencyExchangeResponse failureResponse = CurrencyExchangeResponse.failure();
-        CurrencyExchangeResponse successResponse = CurrencyExchangeResponse.success(
-                Currency.getInstance("USD"), LocalDate.now(),
-                Map.of(Currency.getInstance("EUR"), BigDecimal.valueOf(0.87))
+        CurrencyExchangeResponse response1 = CurrencyExchangeResponse.success(
+                EUR, TEST_DATE, Map.of(USD, BigDecimal.valueOf(1.17))
+        );
+        CurrencyExchangeResponse response2 = CurrencyExchangeResponse.success(
+                EUR, TEST_DATE, Map.of(USD, BigDecimal.valueOf(1.19))
         );
 
-        when(client1.getProviderName()).thenReturn("Provider1");
-        when(client1.getLatestRates(symbols)).thenThrow(new RuntimeException("Exception"));
-        when(client2.getProviderName()).thenReturn("Provider2");
-        when(client2.getLatestRates(symbols)).thenReturn(failureResponse);
-        when(client3.getProviderName()).thenReturn("Provider3");
-        when(client3.getLatestRates(symbols)).thenReturn(successResponse);
+        when(fixerClient.getLatestRates()).thenReturn(response1);
+        when(exchangeRatesClient.getLatestRates()).thenReturn(CurrencyExchangeResponse.failure());
+        when(currencyApiClient.getLatestRates()).thenReturn(response2);
 
-        providerService = new ExchangeRateProviderService(List.of(client1, client2, client3));
+        CurrencyExchangeResponse result = providerService.getLatestRatesFromProviders();
 
-        CurrencyExchangeResponse result = providerService.getLatestRatesFromProviders(symbols);
-
-        assertThat(result).isNotNull();
         assertThat(result.success()).isTrue();
-        assertThat(result.rates().get(Currency.getInstance("EUR")))
-                .isEqualByComparingTo(BigDecimal.valueOf(0.87));
-
-        verify(client1).getLatestRates(symbols);
-        verify(client2).getLatestRates(symbols);
-        verify(client3).getLatestRates(symbols);
+        assertThat(result.rates().get(USD)).isEqualByComparingTo(new BigDecimal("1.18"));
     }
 
     @Test
     void getLatestRatesFromProviders_WithMultipleCurrencies_ShouldSelectMedianForEach() {
         CurrencyExchangeResponse response1 = CurrencyExchangeResponse.success(
-                Currency.getInstance("USD"), LocalDate.now(),
-                Map.of(
-                        Currency.getInstance("EUR"), BigDecimal.valueOf(0.85),
-                        Currency.getInstance("GBP"), BigDecimal.valueOf(0.76)
-                )
+                EUR, TEST_DATE,
+                Map.of(USD, BigDecimal.valueOf(1.17), GBP, BigDecimal.valueOf(0.86))
         );
         CurrencyExchangeResponse response2 = CurrencyExchangeResponse.success(
-                Currency.getInstance("USD"), LocalDate.now(),
-                Map.of(
-                        Currency.getInstance("EUR"), BigDecimal.valueOf(0.87),
-                        Currency.getInstance("GBP"), BigDecimal.valueOf(0.75)
-                )
+                EUR, TEST_DATE,
+                Map.of(USD, BigDecimal.valueOf(1.18), GBP, BigDecimal.valueOf(0.87))
         );
         CurrencyExchangeResponse response3 = CurrencyExchangeResponse.success(
-                Currency.getInstance("USD"), LocalDate.now(),
-                Map.of(
-                        Currency.getInstance("EUR"), BigDecimal.valueOf(0.83),
-                        Currency.getInstance("GBP"), BigDecimal.valueOf(0.77)
-                )
+                EUR, TEST_DATE,
+                Map.of(USD, BigDecimal.valueOf(1.19), GBP, BigDecimal.valueOf(0.88))
         );
 
-        when(client1.getProviderName()).thenReturn("Provider1");
-        when(client1.getLatestRates()).thenReturn(response1);
-        when(client2.getProviderName()).thenReturn("Provider2");
-        when(client2.getLatestRates()).thenReturn(response2);
-        when(client3.getProviderName()).thenReturn("Provider3");
-        when(client3.getLatestRates()).thenReturn(response3);
-
-        providerService = new ExchangeRateProviderService(List.of(client1, client2, client3));
+        when(fixerClient.getLatestRates()).thenReturn(response1);
+        when(exchangeRatesClient.getLatestRates()).thenReturn(response2);
+        when(currencyApiClient.getLatestRates()).thenReturn(response3);
 
         CurrencyExchangeResponse result = providerService.getLatestRatesFromProviders();
 
-        assertThat(result).isNotNull();
         assertThat(result.success()).isTrue();
-        assertThat(result.rates()).hasSize(2);
-        assertThat(result.rates().get(Currency.getInstance("EUR")))
-                .isEqualByComparingTo(BigDecimal.valueOf(0.85));
-        assertThat(result.rates().get(Currency.getInstance("GBP")))
-                .isEqualByComparingTo(BigDecimal.valueOf(0.76));
+        assertThat(result.rates()).containsEntry(USD, BigDecimal.valueOf(1.18));
+        assertThat(result.rates()).containsEntry(GBP, BigDecimal.valueOf(0.87));
+    }
+
+    @Test
+    void getLatestRatesFromProviders_WithAllFailuresIncludingMock_ShouldThrowException() {
+        when(fixerClient.getLatestRates()).thenThrow(new RuntimeException("Failed"));
+        when(exchangeRatesClient.getLatestRates()).thenThrow(new RuntimeException("Failed"));
+        when(currencyApiClient.getLatestRates()).thenThrow(new RuntimeException("Failed"));
+        when(mockClient.getLatestRates()).thenThrow(new RuntimeException("Mock failed"));
+
+        assertThatThrownBy(() -> providerService.getLatestRatesFromProviders())
+                .isInstanceOf(AllProvidersFailedException.class);
     }
 }
