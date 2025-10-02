@@ -23,6 +23,5 @@ public record FixerioResponse(
         @JsonProperty("date")
         LocalDate rateDate,
 
-        @JsonDeserialize(keyUsing = ResponseConverter.CurrencyKeyDeserializer.class)
-        Map<Currency, BigDecimal> rates
+        Map<String, BigDecimal> rates
 ) {}

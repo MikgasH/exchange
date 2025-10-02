@@ -2,8 +2,10 @@ package com.example.cerpshashkin;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.scheduling.annotation.EnableScheduling;
 
 @SpringBootApplication
+@EnableScheduling
 public class CerpsHashkinApplication {
 
     private CerpsHashkinApplication() {
@@ -13,4 +15,3 @@ public class CerpsHashkinApplication {
         SpringApplication.run(CerpsHashkinApplication.class, args);
     }
 }
-

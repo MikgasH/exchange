@@ -24,7 +24,7 @@ class MockExchangeRateClientTest {
 
         assertThat(result).isNotNull();
         assertThat(result.success()).isTrue();
-        assertThat(result.base()).isEqualTo(Currency.getInstance("EUR"));
+        assertThat(result.base()).isEqualTo(Currency.getInstance("USD"));
         assertThat(result.rates()).isNotEmpty();
         assertThat(result.lastUpdated()).isNotNull();
         assertThat(result.rateDate()).isNotNull();
@@ -32,7 +32,7 @@ class MockExchangeRateClientTest {
 
     @Test
     void getLatestRates_WithSymbols_ShouldReturnFilteredResponse() {
-        String symbols = "USD,GBP";
+        String symbols = "EUR,GBP";
 
         CurrencyExchangeResponse result = mockExchangeRateClient.getLatestRates(symbols);
 
@@ -40,7 +40,7 @@ class MockExchangeRateClientTest {
         assertThat(result.success()).isTrue();
         assertThat(result.rates()).hasSize(2);
         assertThat(result.rates()).containsKeys(
-                Currency.getInstance("USD"),
+                Currency.getInstance("EUR"),
                 Currency.getInstance("GBP")
         );
     }
@@ -88,15 +88,14 @@ class MockExchangeRateClientTest {
 
     @Test
     void getLatestRates_WithValidSymbols_ShouldOnlyReturnRequestedCurrencies() {
-        String symbols = "USD,JPY,CAD";
+        String symbols = "EUR,GBP";
 
         CurrencyExchangeResponse result = mockExchangeRateClient.getLatestRates(symbols);
 
-        assertThat(result.rates()).hasSize(3);
+        assertThat(result.rates()).hasSize(2);
         assertThat(result.rates()).containsOnlyKeys(
-                Currency.getInstance("USD"),
-                Currency.getInstance("JPY"),
-                Currency.getInstance("CAD")
+                Currency.getInstance("EUR"),
+                Currency.getInstance("GBP")
         );
     }
 

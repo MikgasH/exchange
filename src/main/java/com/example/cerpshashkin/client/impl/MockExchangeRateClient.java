@@ -19,10 +19,9 @@ import java.util.Random;
 @Slf4j
 public class MockExchangeRateClient implements ExchangeRateClient {
 
-    private final Random random = new Random();
+    private static final Currency BASE_CURRENCY = Currency.getInstance("USD");
 
     private static final Map<Currency, BigDecimal> BASE_RATES = Map.of(
-            Currency.getInstance("USD"), BigDecimal.valueOf(1.0),
             Currency.getInstance("EUR"), BigDecimal.valueOf(0.85),
             Currency.getInstance("GBP"), BigDecimal.valueOf(0.75),
             Currency.getInstance("JPY"), BigDecimal.valueOf(110.0),
@@ -31,12 +30,21 @@ public class MockExchangeRateClient implements ExchangeRateClient {
             Currency.getInstance("AUD"), BigDecimal.valueOf(1.35)
     );
 
+    private static final String LOG_INFO_GENERATING_ALL_RATES = "Mock client generating random exchange rates for all currencies";
+    private static final String LOG_INFO_GENERATING_SYMBOLS_RATES = "Mock client generating exchange rates for symbols: {}";
+    private static final String LOG_WARN_INVALID_CURRENCY = "Invalid currency code: {}";
+    private static final String LOG_DEBUG_GENERATED_RATES = "Generated mock rates: {}";
+
+    private static final String ERROR_SYMBOLS_NULL_OR_EMPTY = "Symbols parameter cannot be null or empty";
+
+    private final Random random = new Random();
+
     @Override
     public CurrencyExchangeResponse getLatestRates() {
-        log.info("Mock client generating random exchange rates for all currencies");
+        log.info(LOG_INFO_GENERATING_ALL_RATES);
 
         return CurrencyExchangeResponse.success(
-                Currency.getInstance("EUR"),
+                BASE_CURRENCY,
                 LocalDate.now(),
                 generateRandomRates()
         );
@@ -45,29 +53,28 @@ public class MockExchangeRateClient implements ExchangeRateClient {
     @Override
     public CurrencyExchangeResponse getLatestRates(final String symbols) {
         if (!StringUtils.hasText(symbols)) {
-            throw new IllegalArgumentException("Symbols parameter cannot be null or empty");
+            throw new IllegalArgumentException(ERROR_SYMBOLS_NULL_OR_EMPTY);
         }
 
-        log.info("Mock client generating exchange rates for symbols: {}", symbols);
+        log.info(LOG_INFO_GENERATING_SYMBOLS_RATES, symbols);
 
         final Map<Currency, BigDecimal> filteredRates = new HashMap<>();
 
         for (String currencyCode : symbols.split(",")) {
-            currencyCode = currencyCode.trim();
+            currencyCode = currencyCode.trim().toUpperCase();
             try {
                 final Currency currency = Currency.getInstance(currencyCode);
-                if (BASE_RATES.containsKey(currency)) {
+
+                if (!currency.equals(BASE_CURRENCY) && BASE_RATES.containsKey(currency)) {
                     filteredRates.put(currency, generateRandomRate(BASE_RATES.get(currency)));
-                } else {
-                    log.debug("Currency {} not in base rates, skipping", currencyCode);
                 }
             } catch (IllegalArgumentException e) {
-                log.warn("Invalid currency code: {}", currencyCode);
+                log.warn(LOG_WARN_INVALID_CURRENCY, currencyCode);
             }
         }
 
         return CurrencyExchangeResponse.success(
-                Currency.getInstance("EUR"),
+                BASE_CURRENCY,
                 LocalDate.now(),
                 filteredRates
         );
@@ -80,9 +87,12 @@ public class MockExchangeRateClient implements ExchangeRateClient {
 
     private Map<Currency, BigDecimal> generateRandomRates() {
         final Map<Currency, BigDecimal> rates = new HashMap<>();
-        BASE_RATES.entrySet().stream()
-                .filter(entry -> !Currency.getInstance("EUR").equals(entry.getKey()))
-                .forEach(entry -> rates.put(entry.getKey(), generateRandomRate(entry.getValue())));
+
+        BASE_RATES.forEach((currency, baseRate) ->
+                rates.put(currency, generateRandomRate(baseRate))
+        );
+
+        log.debug(LOG_DEBUG_GENERATED_RATES, rates);
         return rates;
     }
 

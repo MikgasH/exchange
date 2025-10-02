@@ -6,6 +6,11 @@ spring.http.client:
   connect-timeout: 5s
   read-timeout: 10s
 
+scheduling:
+  enabled: true
+  exchange-rates:
+    rate: 3600000
+
 api:
   fixer:
     url: https://data.fixer.io/api
@@ -16,3 +21,10 @@ api:
   currencyapi:
     url: https://api.currencyapi.com/v3
     access-key: ${CURRENCYAPI_KEY:}
+
+cache:
+  exchange-rates:
+    ttl: 3600
+
+exchange-rates:
+  base-currency: EUR

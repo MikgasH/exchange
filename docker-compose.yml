@@ -10,6 +10,7 @@ services:
     environment:
       - FIXER_API_KEY=${FIXER_API_KEY}
       - EXCHANGERATES_API_KEY=${EXCHANGERATES_API_KEY}
+      - CURRENCYAPI_KEY=${CURRENCYAPI_KEY}
     networks:
       - currency-network
 

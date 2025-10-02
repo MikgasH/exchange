@@ -30,8 +30,13 @@ public class FixerioClient implements ExchangeRateClient {
     private static final String FETCHING_LATEST_LOG = "Fetching latest rates from {}";
     private static final String FETCHING_SYMBOLS_LOG = "Fetching rates for symbols {} from {}";
     private static final String REQUEST_LOG = "Making request to Fixer.io: {}";
+    private static final String SUCCESS_LOG = "Successfully received response from Fixer.io";
 
     private static final String SYMBOLS_VALIDATION_ERROR = "Symbols parameter cannot be null or empty";
+    private static final String NULL_RESPONSE_ERROR = "Null response received";
+    private static final String SUCCESS_FALSE_ERROR = "API returned success=false";
+    private static final String EMPTY_RATES_ERROR = "Empty rates received";
+    private static final String HTTP_ERROR_PREFIX = "HTTP error: ";
 
     @Value("${api.fixer.access-key}")
     private String fixerAccessKey;
@@ -65,23 +70,22 @@ public class FixerioClient implements ExchangeRateClient {
 
         final FixerioResponse response = fixerRestClient.get()
                 .uri(uriBuilder -> {
-                    var builder = uriBuilder
-                            .path(ENDPOINT)
+                    uriBuilder.path(ENDPOINT)
                             .queryParam(ACCESS_KEY_PARAM, fixerAccessKey);
-                    symbolsOpt.ifPresent(s -> builder.queryParam(SYMBOLS_PARAM, s));
-                    return builder.build();
+                    symbolsOpt.ifPresent(s -> uriBuilder.queryParam(SYMBOLS_PARAM, s));
+                    return uriBuilder.build();
                 })
                 .retrieve()
                 .onStatus(status -> !status.is2xxSuccessful(),
                         (request, httpResponse) -> {
                             throw new ExternalApiException(operation, getProviderName(),
-                                    "HTTP error: " + httpResponse.getStatusCode());
+                                    HTTP_ERROR_PREFIX + httpResponse.getStatusCode());
                         })
                 .body(FixerioResponse.class);
 
         validateResponse(response, operation);
 
-        log.debug("Successfully received response from Fixer.io");
+        log.debug(SUCCESS_LOG);
         return converter.convertFromFixer(response);
     }
 
@@ -92,17 +96,15 @@ public class FixerioClient implements ExchangeRateClient {
     }
 
     private void validateResponse(final FixerioResponse response, final String operation) {
-        if (response == null) {
-            throw new ExternalApiException(operation, getProviderName(), "Null response received");
-        }
+        final FixerioResponse validResponse = Optional.ofNullable(response)
+                .orElseThrow(() -> new ExternalApiException(operation, getProviderName(), NULL_RESPONSE_ERROR));
 
-        if (!response.success()) {
-            throw new ExternalApiException(operation, getProviderName(), "API returned success=false");
-        }
+        Optional.of(validResponse)
+                .filter(FixerioResponse::success)
+                .orElseThrow(() -> new ExternalApiException(operation, getProviderName(), SUCCESS_FALSE_ERROR));
 
-        if (response.rates() == null) {
-            throw new ExternalApiException(operation, getProviderName(), "Empty rates received");
-        }
+        Optional.ofNullable(validResponse.rates())
+                .orElseThrow(() -> new ExternalApiException(operation, getProviderName(), EMPTY_RATES_ERROR));
     }
 
     @Override

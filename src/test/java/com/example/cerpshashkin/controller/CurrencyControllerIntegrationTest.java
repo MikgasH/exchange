@@ -1,98 +1,276 @@
 package com.example.cerpshashkin.controller;
 
+import com.example.cerpshashkin.BaseWireMockTest;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.web.client.TestRestTemplate;
 import org.springframework.boot.test.web.server.LocalServerPort;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
+import org.springframework.http.HttpStatusCode;
+import org.springframework.web.client.RestClient;
 
+import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
+import static com.github.tomakehurst.wiremock.client.WireMock.get;
+import static com.github.tomakehurst.wiremock.client.WireMock.stubFor;
+import static com.github.tomakehurst.wiremock.client.WireMock.urlEqualTo;
+import static com.github.tomakehurst.wiremock.client.WireMock.urlPathMatching;
 import static org.assertj.core.api.Assertions.assertThat;
 
-/*
-Difference between Unit and Integration tests:
-
-Unit tests:
-- Test only controller separately
-- Use fake dependencies (mocks)
-- Work fast
-- Check logic of one component
-
-Integration tests:
-- Test entire system as a whole
-- Start full application
-- Use real components (not mocks)
-- Slower, but check that everything works together
- */
-
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
-class CurrencyControllerIntegrationTest {
+class CurrencyControllerIntegrationTest extends BaseWireMockTest {
 
     @LocalServerPort
     private int port;
 
-    @Autowired
-    private TestRestTemplate restTemplate;
+    private RestClient restClient;
 
-    private String createUrl(String endpoint) {
-        return "http://localhost:" + port + "/api/v1/currencies" + endpoint;
+    @BeforeEach
+    void setUp() {
+        restClient = RestClient.builder()
+                .baseUrl("http://localhost:" + port + "/api/v1/currencies")
+                .build();
     }
 
     @Test
-    void getExchangeRates() {
-        ResponseEntity<String> response = restTemplate.getForEntity(
-                createUrl("/exchange-rates"),
-                String.class
-        );
+    void getCurrencies_ShouldReturnDefaultCurrencies() {
+        final String response = restClient.get()
+                .retrieve()
+                .onStatus(HttpStatusCode::isError, (request, httpResponse) -> {})
+                .body(String.class);
 
-        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
-        assertThat(response.getBody()).contains("\"success\":true");
-        assertThat(response.getBody()).contains("USD");
+        assertThat(response)
+                .contains("USD", "EUR", "GBP");
     }
 
     @Test
-    void addCurrency() {
-        ResponseEntity<String> response = restTemplate.postForEntity(
-                createUrl("?currency=EUR"),
-                null,
-                String.class
-        );
+    void addCurrency_WithValidCurrency_ShouldReturnSuccess() {
+        final String response = restClient.post()
+                .uri("?currency=NOK")
+                .retrieve()
+                .onStatus(HttpStatusCode::isError, (request, httpResponse) -> {})
+                .body(String.class);
 
-        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
-        assertThat(response.getBody()).contains("Currency EUR added");
+        assertThat(response).contains("Currency NOK added successfully");
+
+        final String getCurrenciesResponse = restClient.get()
+                .retrieve()
+                .body(String.class);
+
+        assertThat(getCurrenciesResponse).contains("NOK");
     }
 
     @Test
-    void deleteCurrency() {
-        restTemplate.delete(createUrl("/USD"));
-
-        ResponseEntity<String> response = restTemplate.getForEntity(
-                createUrl("/exchange-rates"),
-                String.class
-        );
-        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+    void addCurrency_WithInvalidCurrency_ShouldReturnBadRequest() {
+        restClient.post()
+                .uri("?currency=INVALID")
+                .retrieve()
+                .onStatus(status -> status.value() == 400, (request, httpResponse) -> {
+                    String body = new String(httpResponse.getBody().readAllBytes());
+                    assertThat(body)
+                            .contains("Validation error")
+                            .contains("Invalid currency code");
+                })
+                .toBodilessEntity();
     }
 
     @Test
-    void getCurrencies() {
-        ResponseEntity<String> response = restTemplate.getForEntity(
-                createUrl(""),
-                String.class
-        );
-
-        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+    void addCurrency_WithEmptyCurrency_ShouldReturnBadRequest() {
+        restClient.post()
+                .uri("?currency=")
+                .retrieve()
+                .onStatus(status -> status.value() == 400, (request, httpResponse) -> {
+                    String body = new String(httpResponse.getBody().readAllBytes());
+                    assertThat(body).contains("Validation error");
+                })
+                .toBodilessEntity();
     }
 
     @Test
-    void refreshRates() {
-        ResponseEntity<String> response = restTemplate.postForEntity(
-                createUrl("/refresh"),
-                null,
-                String.class
-        );
+    void deleteCurrency_WithExistingCurrency_ShouldReturnSuccess() {
+        restClient.post()
+                .uri("?currency=SEK")
+                .retrieve()
+                .toBodilessEntity();
 
-        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
-        assertThat(response.getBody()).contains("Exchange rates updated");
+        restClient.delete()
+                .uri("/SEK")
+                .retrieve()
+                .toBodilessEntity();
+
+        final String response = restClient.get()
+                .retrieve()
+                .body(String.class);
+
+        assertThat(response).doesNotContain("SEK");
+    }
+
+    @Test
+    void deleteCurrency_WithNonExistentCurrency_ShouldReturnBadRequest() {
+        restClient.delete()
+                .uri("/NONEXISTENT")
+                .retrieve()
+                .onStatus(status -> status.value() == 400, (request, httpResponse) -> {
+                    String body = new String(httpResponse.getBody().readAllBytes());
+                    assertThat(body)
+                            .contains("Validation error")
+                            .contains("Invalid currency code");
+                })
+                .toBodilessEntity();
+    }
+
+    @Test
+    void exchangeRates_WithSameCurrencies_ShouldReturnSameAmount() {
+        final String response = restClient.get()
+                .uri("/exchange-rates?amount=100&from=USD&to=USD")
+                .retrieve()
+                .body(String.class);
+
+        assertThat(response)
+                .contains("\"success\":true")
+                .contains("\"convertedAmount\":100")
+                .contains("\"exchangeRate\":1")
+                .contains("\"provider\":\"Same Currency\"");
+    }
+
+    @Test
+    void exchangeRates_WithValidCurrencies_AndMockProvider_ShouldReturnConversion() {
+        stubAllProvidersToFail();
+
+        final String response = restClient.get()
+                .uri("/exchange-rates?amount=100&from=USD&to=EUR")
+                .retrieve()
+                .body(String.class);
+
+        assertThat(response)
+                .contains("\"success\":true")
+                .contains("\"originalAmount\":100")
+                .contains("\"fromCurrency\":\"USD\"")
+                .contains("\"toCurrency\":\"EUR\"");
+    }
+
+    @Test
+    void exchangeRates_WithSuccessfulExternalProvider_ShouldReturnConversion() {
+        stubFor(get(urlEqualTo("/latest?access_key=test-fixer-key"))
+                .willReturn(aResponse()
+                        .withStatus(200)
+                        .withHeader("Content-Type", "application/json")
+                        .withBody(readJsonFile("fixer-exchangerates-success-response.json"))));
+
+        final String response = restClient.get()
+                .uri("/exchange-rates?amount=100&from=EUR&to=USD")
+                .retrieve()
+                .body(String.class);
+
+        assertThat(response)
+                .contains("\"success\":true")
+                .contains("\"originalAmount\":100");
+    }
+
+    @Test
+    void exchangeRates_WithInvalidFromCurrency_ShouldReturnBadRequest() {
+        restClient.get()
+                .uri("/exchange-rates?amount=100&from=INVALID&to=EUR")
+                .retrieve()
+                .onStatus(status -> status.value() == 400, (request, httpResponse) -> {
+                    String body = new String(httpResponse.getBody().readAllBytes());
+                    assertThat(body)
+                            .contains("Validation error")
+                            .contains("Invalid source currency code");
+                })
+                .toBodilessEntity();
+    }
+
+    @Test
+    void exchangeRates_WithInvalidToCurrency_ShouldReturnBadRequest() {
+        restClient.get()
+                .uri("/exchange-rates?amount=100&from=USD&to=XYZ")
+                .retrieve()
+                .onStatus(status -> status.value() == 400, (request, httpResponse) -> {
+                    String body = new String(httpResponse.getBody().readAllBytes());
+                    assertThat(body)
+                            .contains("Validation error")
+                            .contains("Invalid target currency code");
+                })
+                .toBodilessEntity();
+    }
+
+    @Test
+    void exchangeRates_WithNegativeAmount_ShouldReturnBadRequest() {
+        restClient.get()
+                .uri("/exchange-rates?amount=-100&from=USD&to=EUR")
+                .retrieve()
+                .onStatus(status -> status.value() == 400, (request, httpResponse) -> {
+                    assertThat(httpResponse.getStatusCode().value()).isEqualTo(400);
+                })
+                .toBodilessEntity();
+    }
+
+    @Test
+    void exchangeRates_WithZeroAmount_ShouldReturnBadRequest() {
+        restClient.get()
+                .uri("/exchange-rates?amount=0&from=USD&to=EUR")
+                .retrieve()
+                .onStatus(status -> status.value() == 400, (request, httpResponse) -> {
+                    assertThat(httpResponse.getStatusCode().value()).isEqualTo(400);
+                })
+                .toBodilessEntity();
+    }
+
+    @Test
+    void refreshRates_WithMockProvider_ShouldReturnSuccess() {
+        stubAllProvidersToFail();
+
+        final String response = restClient.post()
+                .uri("/refresh")
+                .retrieve()
+                .body(String.class);
+
+        assertThat(response).contains("Exchange rates updated successfully");
+    }
+
+    @Test
+    void refreshRates_WithSuccessfulExternalProvider_ShouldReturnSuccess() {
+        stubFor(get(urlEqualTo("/latest?access_key=test-fixer-key"))
+                .willReturn(aResponse()
+                        .withStatus(200)
+                        .withHeader("Content-Type", "application/json")
+                        .withBody(readJsonFile("fixer-exchangerates-success-response.json"))));
+
+        final String response = restClient.post()
+                .uri("/refresh")
+                .retrieve()
+                .body(String.class);
+
+        assertThat(response).contains("Exchange rates updated successfully");
+    }
+
+    @Test
+    void fullWorkflow_AddConvertRefreshDelete_ShouldWorkCorrectly() {
+        stubAllProvidersToFail();
+
+        String response = restClient.get().retrieve().body(String.class);
+        assertThat(response).contains("USD", "EUR", "GBP");
+
+        restClient.post().uri("?currency=JPY").retrieve().toBodilessEntity();
+
+        response = restClient.get().retrieve().body(String.class);
+        assertThat(response).contains("JPY");
+
+        restClient.post().uri("/refresh").retrieve().toBodilessEntity();
+
+        response = restClient.get()
+                .uri("/exchange-rates?amount=100&from=USD&to=JPY")
+                .retrieve()
+                .body(String.class);
+        assertThat(response).contains("\"success\":true");
+
+        restClient.delete().uri("/JPY").retrieve().toBodilessEntity();
+
+        response = restClient.get().retrieve().body(String.class);
+        assertThat(response).doesNotContain("JPY");
+    }
+
+    private void stubAllProvidersToFail() {
+        stubFor(get(urlPathMatching("/latest.*"))
+                .willReturn(aResponse().withStatus(500)));
     }
 }
