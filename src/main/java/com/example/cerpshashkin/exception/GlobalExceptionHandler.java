@@ -87,6 +87,15 @@ public class GlobalExceptionHandler {
                 "An unexpected error occurred: " + ex.getMessage());
     }
 
+    @ExceptionHandler(CurrencyNotSupportedException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public ProblemDetail handleCurrencyNotSupported(final CurrencyNotSupportedException ex) {
+        return createProblemDetail(
+                HttpStatus.BAD_REQUEST,
+                "Currency Not Supported", ex.getMessage()
+        );
+    }
+
     private ProblemDetail createProblemDetail(final HttpStatus status, final String title, final String detail) {
         ProblemDetail problemDetail = ProblemDetail.forStatus(status.value());
         problemDetail.setTitle(title);

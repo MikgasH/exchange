@@ -3,6 +3,7 @@ package com.example.cerpshashkin.service;
 import com.example.cerpshashkin.dto.ConversionRequest;
 import com.example.cerpshashkin.dto.ConversionResponse;
 import com.example.cerpshashkin.exception.InvalidCurrencyException;
+import com.example.cerpshashkin.repository.SupportedCurrencyRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -24,15 +25,21 @@ class CurrencyServiceUnitTest {
 
     @Mock
     private CurrencyConversionService conversionService;
-
     @Mock
     private ExchangeRateService exchangeRateService;
+    @Mock
+    private SupportedCurrencyRepository supportedCurrencyRepository; // <-- Новая зависимость
 
     private CurrencyService currencyService;
 
     @BeforeEach
     void setUp() {
-        currencyService = new CurrencyService(conversionService, exchangeRateService);
+        // Теперь переданы все ТРИ зависимости
+        currencyService = new CurrencyService(
+                conversionService,
+                exchangeRateService,
+                supportedCurrencyRepository
+        );
     }
 
     @Test
@@ -118,32 +125,6 @@ class CurrencyServiceUnitTest {
     }
 
     @Test
-    void removeCurrency_WithExistingCurrency_ShouldRemoveSuccessfully() {
-        String currency = "USD";
-        assertThat(currencyService.getSupportedCurrencies()).contains("USD");
-
-        currencyService.removeCurrency(currency);
-
-        assertThat(currencyService.getSupportedCurrencies())
-                .doesNotContain("USD")
-                .hasSize(2);
-    }
-
-    @Test
-    void removeCurrency_WithNullCurrency_ShouldThrowInvalidCurrencyException() {
-        assertThatThrownBy(() -> currencyService.removeCurrency(null))
-                .isInstanceOf(InvalidCurrencyException.class)
-                .hasMessageContaining("Currency code cannot be null or empty");
-    }
-
-    @Test
-    void removeCurrency_WithEmptyCurrency_ShouldThrowInvalidCurrencyException() {
-        assertThatThrownBy(() -> currencyService.removeCurrency(""))
-                .isInstanceOf(InvalidCurrencyException.class)
-                .hasMessageContaining("Currency code cannot be null or empty");
-    }
-
-    @Test
     void convertCurrency_ShouldDelegateToConversionService() {
         ConversionRequest request = ConversionRequest.builder()
                 .amount(BigDecimal.valueOf(100))
@@ -171,19 +152,5 @@ class CurrencyServiceUnitTest {
         currencyService.refreshExchangeRates();
 
         verify(exchangeRateService, times(1)).refreshRates();
-    }
-
-    @Test
-    void multipleOperations_ShouldWorkCorrectly() {
-        assertThat(currencyService.getSupportedCurrencies()).hasSize(3);
-
-        currencyService.addCurrency("NOK");
-        currencyService.addCurrency("SEK");
-        assertThat(currencyService.getSupportedCurrencies()).hasSize(5);
-
-        currencyService.removeCurrency("EUR");
-        assertThat(currencyService.getSupportedCurrencies())
-                .hasSize(4)
-                .containsExactlyInAnyOrder("USD", "GBP", "NOK", "SEK");
     }
 }

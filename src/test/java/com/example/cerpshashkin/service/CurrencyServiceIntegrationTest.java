@@ -31,21 +31,6 @@ class CurrencyServiceIntegrationTest {
     }
 
     @Test
-    void addAndRemoveCurrency_ShouldWorkCorrectly() {
-        currencyService.addCurrency("NOK");
-
-        assertThat(currencyService.getSupportedCurrencies())
-                .contains("NOK")
-                .hasSize(4);
-
-        currencyService.removeCurrency("NOK");
-
-        assertThat(currencyService.getSupportedCurrencies())
-                .doesNotContain("NOK")
-                .hasSize(3);
-    }
-
-    @Test
     void addCurrency_WithInvalidCurrency_ShouldThrowException() {
         assertThatThrownBy(() -> currencyService.addCurrency("INVALID"))
                 .isInstanceOf(InvalidCurrencyException.class)
@@ -103,31 +88,6 @@ class CurrencyServiceIntegrationTest {
         currencyService.refreshExchangeRates();
 
         assertThat(currencyService.getSupportedCurrencies()).isNotEmpty();
-    }
-
-    @Test
-    void fullWorkflow_AddConvertRefresh_ShouldWorkCorrectly() {
-        assertThat(currencyService.getSupportedCurrencies()).hasSize(3);
-
-        currencyService.addCurrency("JPY");
-        assertThat(currencyService.getSupportedCurrencies()).hasSize(4);
-
-        ConversionRequest request = ConversionRequest.builder()
-                .amount(BigDecimal.valueOf(1000))
-                .from("USD")
-                .to("JPY")
-                .build();
-
-        ConversionResponse result = currencyService.convertCurrency(request);
-        assertThat(result.success()).isTrue();
-
-        currencyService.refreshExchangeRates();
-
-        ConversionResponse result2 = currencyService.convertCurrency(request);
-        assertThat(result2.success()).isTrue();
-
-        currencyService.removeCurrency("JPY");
-        assertThat(currencyService.getSupportedCurrencies()).hasSize(3);
     }
 
     @Test

@@ -97,30 +97,6 @@ class CurrencyControllerUnitTest {
     }
 
     @Test
-    void deleteCurrency_ShouldReturnSuccessMessage_WhenServiceSucceeds() throws Exception {
-        String currency = "NOK";
-        doNothing().when(currencyService).removeCurrency(currency);
-
-        mockMvc.perform(delete("/api/v1/currencies/{currency}", currency))
-                .andExpect(status().isOk())
-                .andExpect(content().string("Currency NOK removed successfully"));
-
-        verify(currencyService, times(1)).removeCurrency(currency);
-    }
-
-    @Test
-    void deleteCurrency_ShouldReturnBadRequest_WhenCurrencyIsInvalid() throws Exception {
-        String currency = "INVALID";
-
-        mockMvc.perform(delete("/api/v1/currencies/{currency}", currency))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.title").value("Validation error"))
-                .andExpect(jsonPath("$.detail").value("deleteCurrency.currency: Invalid currency code"));
-
-        verify(currencyService, never()).removeCurrency(any());
-    }
-
-    @Test
     void getExchangeRates_ShouldReturnSuccessResponse_WhenConversionIsSuccessful() throws Exception {
         BigDecimal amount = BigDecimal.valueOf(100);
         String from = "USD";

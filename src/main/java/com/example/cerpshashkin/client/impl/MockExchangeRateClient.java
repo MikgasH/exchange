@@ -19,15 +19,19 @@ import java.util.Random;
 @Slf4j
 public class MockExchangeRateClient implements ExchangeRateClient {
 
-    private static final Currency BASE_CURRENCY = Currency.getInstance("USD");
+    private static final Currency BASE_CURRENCY = Currency.getInstance("EUR");
 
     private static final Map<Currency, BigDecimal> BASE_RATES = Map.of(
-            Currency.getInstance("EUR"), BigDecimal.valueOf(0.85),
-            Currency.getInstance("GBP"), BigDecimal.valueOf(0.75),
-            Currency.getInstance("JPY"), BigDecimal.valueOf(110.0),
-            Currency.getInstance("CAD"), BigDecimal.valueOf(1.25),
-            Currency.getInstance("CHF"), BigDecimal.valueOf(0.95),
-            Currency.getInstance("AUD"), BigDecimal.valueOf(1.35)
+            Currency.getInstance("EUR"), BigDecimal.valueOf(1.0),
+            Currency.getInstance("USD"), BigDecimal.valueOf(1.08),
+            Currency.getInstance("GBP"), BigDecimal.valueOf(0.85),
+            Currency.getInstance("JPY"), BigDecimal.valueOf(160.0),
+            Currency.getInstance("CAD"), BigDecimal.valueOf(1.5),
+            Currency.getInstance("CHF"), BigDecimal.valueOf(0.97),
+            Currency.getInstance("AUD"), BigDecimal.valueOf(1.65),
+            Currency.getInstance("CNY"), BigDecimal.valueOf(7.8),
+            Currency.getInstance("SEK"), BigDecimal.valueOf(11.5),
+            Currency.getInstance("NZD"), BigDecimal.valueOf(1.7)
     );
 
     private static final String LOG_INFO_GENERATING_ALL_RATES = "Mock client generating random exchange rates for all currencies";

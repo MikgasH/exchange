@@ -2,6 +2,19 @@ spring:
   application:
     name: CERPS-Hashkin-Test
 
+  datasource:
+    url: jdbc:postgresql://localhost:5432/cerps_test_db
+    username: cerps_user
+    password: cerps_password
+
+  jpa:
+    hibernate:
+      ddl-auto: none
+    show-sql: true
+
+  liquibase:
+    enabled: true
+
 scheduling:
   enabled: false
 
