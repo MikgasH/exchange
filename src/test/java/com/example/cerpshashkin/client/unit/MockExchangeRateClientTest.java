@@ -24,7 +24,8 @@ class MockExchangeRateClientTest {
 
         assertThat(result).isNotNull();
         assertThat(result.success()).isTrue();
-        assertThat(result.base()).isEqualTo(Currency.getInstance("USD"));
+        assertThat(result.base()).isEqualTo(Currency.getInstance("EUR"));
+        assertThat(result.rates()).hasSize(10);
         assertThat(result.rates()).isNotEmpty();
         assertThat(result.lastUpdated()).isNotNull();
         assertThat(result.rateDate()).isNotNull();
@@ -32,17 +33,15 @@ class MockExchangeRateClientTest {
 
     @Test
     void getLatestRates_WithSymbols_ShouldReturnFilteredResponse() {
-        String symbols = "EUR,GBP";
-
+        final String symbols = "USD, JPY";
         CurrencyExchangeResponse result = mockExchangeRateClient.getLatestRates(symbols);
 
         assertThat(result).isNotNull();
         assertThat(result.success()).isTrue();
         assertThat(result.rates()).hasSize(2);
-        assertThat(result.rates()).containsKeys(
-                Currency.getInstance("EUR"),
-                Currency.getInstance("GBP")
-        );
+        assertThat(result.rates()).containsKey(Currency.getInstance("USD"));
+        assertThat(result.rates()).containsKey(Currency.getInstance("JPY"));
+        assertThat(result.base()).isEqualTo(Currency.getInstance("EUR"));
     }
 
     @Test
@@ -88,15 +87,15 @@ class MockExchangeRateClientTest {
 
     @Test
     void getLatestRates_WithValidSymbols_ShouldOnlyReturnRequestedCurrencies() {
-        String symbols = "EUR,GBP";
-
+        final String symbols = "GBP, CAD";
         CurrencyExchangeResponse result = mockExchangeRateClient.getLatestRates(symbols);
 
+        assertThat(result).isNotNull();
+        assertThat(result.success()).isTrue();
         assertThat(result.rates()).hasSize(2);
-        assertThat(result.rates()).containsOnlyKeys(
-                Currency.getInstance("EUR"),
-                Currency.getInstance("GBP")
-        );
+        assertThat(result.rates()).containsKey(Currency.getInstance("GBP"));
+        assertThat(result.rates()).containsKey(Currency.getInstance("CAD"));
+        assertThat(result.base()).isEqualTo(Currency.getInstance("EUR"));
     }
 
     @Test

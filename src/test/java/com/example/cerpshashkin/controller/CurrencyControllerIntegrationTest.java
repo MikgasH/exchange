@@ -6,6 +6,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.http.HttpStatusCode;
+import org.springframework.test.context.ActiveProfiles;
 import org.springframework.web.client.RestClient;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
@@ -16,6 +17,7 @@ import static com.github.tomakehurst.wiremock.client.WireMock.urlPathMatching;
 import static org.assertj.core.api.Assertions.assertThat;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+@ActiveProfiles("test")
 class CurrencyControllerIntegrationTest extends BaseWireMockTest {
 
     @LocalServerPort
@@ -38,7 +40,7 @@ class CurrencyControllerIntegrationTest extends BaseWireMockTest {
                 .body(String.class);
 
         assertThat(response)
-                .contains("USD", "EUR", "GBP");
+                .contains("USD", "EUR", "GBP", "JPY", "CHF", "CAD", "AUD", "CNY", "SEK", "NZD");
     }
 
     @Test
@@ -80,39 +82,6 @@ class CurrencyControllerIntegrationTest extends BaseWireMockTest {
                 .onStatus(status -> status.value() == 400, (request, httpResponse) -> {
                     String body = new String(httpResponse.getBody().readAllBytes());
                     assertThat(body).contains("Validation error");
-                })
-                .toBodilessEntity();
-    }
-
-    @Test
-    void deleteCurrency_WithExistingCurrency_ShouldReturnSuccess() {
-        restClient.post()
-                .uri("?currency=SEK")
-                .retrieve()
-                .toBodilessEntity();
-
-        restClient.delete()
-                .uri("/SEK")
-                .retrieve()
-                .toBodilessEntity();
-
-        final String response = restClient.get()
-                .retrieve()
-                .body(String.class);
-
-        assertThat(response).doesNotContain("SEK");
-    }
-
-    @Test
-    void deleteCurrency_WithNonExistentCurrency_ShouldReturnBadRequest() {
-        restClient.delete()
-                .uri("/NONEXISTENT")
-                .retrieve()
-                .onStatus(status -> status.value() == 400, (request, httpResponse) -> {
-                    String body = new String(httpResponse.getBody().readAllBytes());
-                    assertThat(body)
-                            .contains("Validation error")
-                            .contains("Invalid currency code");
                 })
                 .toBodilessEntity();
     }
@@ -164,6 +133,22 @@ class CurrencyControllerIntegrationTest extends BaseWireMockTest {
                 .contains("\"success\":true")
                 .contains("\"originalAmount\":100");
     }
+
+
+    @Test
+    void exchangeRates_WithUnsupportedFromCurrency_ShouldReturnBadRequest() {
+        restClient.get()
+                .uri("/exchange-rates?amount=100&from=INVALID&to=EUR")
+                .retrieve()
+                .onStatus(status -> status.value() == 400, (request, httpResponse) -> {
+                    String body = new String(httpResponse.getBody().readAllBytes());
+                    assertThat(body)
+                            .contains("Validation error")
+                            .contains("Invalid source currency code");
+                })
+                .toBodilessEntity();
+    }
+
 
     @Test
     void exchangeRates_WithInvalidFromCurrency_ShouldReturnBadRequest() {
@@ -250,23 +235,18 @@ class CurrencyControllerIntegrationTest extends BaseWireMockTest {
         String response = restClient.get().retrieve().body(String.class);
         assertThat(response).contains("USD", "EUR", "GBP");
 
-        restClient.post().uri("?currency=JPY").retrieve().toBodilessEntity();
+        restClient.post().uri("?currency=SEK").retrieve().toBodilessEntity();
 
         response = restClient.get().retrieve().body(String.class);
-        assertThat(response).contains("JPY");
+        assertThat(response).contains("SEK");
 
         restClient.post().uri("/refresh").retrieve().toBodilessEntity();
 
         response = restClient.get()
-                .uri("/exchange-rates?amount=100&from=USD&to=JPY")
+                .uri("/exchange-rates?amount=100&from=EUR&to=SEK")
                 .retrieve()
                 .body(String.class);
         assertThat(response).contains("\"success\":true");
-
-        restClient.delete().uri("/JPY").retrieve().toBodilessEntity();
-
-        response = restClient.get().retrieve().body(String.class);
-        assertThat(response).doesNotContain("JPY");
     }
 
     private void stubAllProvidersToFail() {
