@@ -29,11 +29,11 @@ scheduling:
 
 api:
   fixer:
-    url: http://localhost:8080
+    url: http://dummy-fixer-url
     access-key: test-fixer-key
   exchangerates:
-    url: http://localhost:8080
+    url: http://dummy-exchangerates-url
     access-key: test-exchangerates-key
   currencyapi:
-    url: http://localhost:8080
+    url: http://dummy-currencyapi-url
     access-key: test-currencyapi-key

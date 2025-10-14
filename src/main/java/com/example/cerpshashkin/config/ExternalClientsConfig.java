@@ -8,31 +8,25 @@ import org.springframework.web.client.RestClient;
 @Configuration
 public class ExternalClientsConfig {
 
-    @Value("${api.fixer.url}")
-    private String fixerUrl;
-
-    @Value("${api.exchangerates.url}")
-    private String exchangeratesUrl;
-
-    @Value("${api.currencyapi.url}")
-    private String currencyapiUrl;
-
     @Bean("fixerRestClient")
-    public RestClient fixerRestClient() {
+    public RestClient fixerRestClient(
+            @Value("${api.fixer.url}") final String fixerUrl) {
         return RestClient.builder()
                 .baseUrl(fixerUrl)
                 .build();
     }
 
     @Bean("exchangeratesRestClient")
-    public RestClient exchangeratesRestClient() {
+    public RestClient exchangeratesRestClient(
+            @Value("${api.exchangerates.url}") final String exchangeratesUrl) {
         return RestClient.builder()
                 .baseUrl(exchangeratesUrl)
                 .build();
     }
 
     @Bean("currencyapiRestClient")
-    public RestClient currencyapiRestClient() {
+    public RestClient currencyapiRestClient(
+            @Value("${api.currencyapi.url}") final String currencyapiUrl) {
         return RestClient.builder()
                 .baseUrl(currencyapiUrl)
                 .build();

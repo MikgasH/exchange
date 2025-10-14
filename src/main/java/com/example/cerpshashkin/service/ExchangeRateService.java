@@ -1,6 +1,7 @@
 package com.example.cerpshashkin.service;
 
 import com.example.cerpshashkin.entity.ExchangeRateEntity;
+import com.example.cerpshashkin.entity.ExchangeRateSource;
 import com.example.cerpshashkin.entity.SupportedCurrencyEntity;
 import com.example.cerpshashkin.exception.ExchangeRateNotAvailableException;
 import com.example.cerpshashkin.model.CachedRate;
@@ -94,17 +95,18 @@ public class ExchangeRateService {
 
             final Set<String> supportedCodes = getSupportedCurrencyCodes();
             final Instant now = Instant.now();
+            final Currency baseCurrencyObj = Currency.getInstance(baseCurrencyCode);
 
             final List<ExchangeRateEntity> entities = response.rates().entrySet()
                     .stream()
                     .filter(entry -> supportedCodes.contains(entry.getKey().getCurrencyCode()))
-                    .filter(entry -> !entry.getKey().getCurrencyCode().equals(baseCurrencyCode))
+                    .filter(entry -> !entry.getKey().equals(baseCurrencyObj))
                     .map(entry -> ExchangeRateEntity.builder()
                             .id(UUID.randomUUID())
-                            .baseCurrency(baseCurrencyCode)
-                            .targetCurrency(entry.getKey().getCurrencyCode())
+                            .baseCurrency(baseCurrencyObj)
+                            .targetCurrency(entry.getKey())
                             .rate(entry.getValue())
-                            .source(ExchangeRateEntity.SOURCE_AGGREGATED)
+                            .source(ExchangeRateSource.AGGREGATED)
                             .timestamp(now)
                             .build()
                     )
@@ -114,8 +116,8 @@ public class ExchangeRateService {
 
             entities.forEach(entity ->
                     cache.putRate(
-                            Currency.getInstance(entity.getBaseCurrency()),
-                            Currency.getInstance(entity.getTargetCurrency()),
+                            entity.getBaseCurrency(),
+                            entity.getTargetCurrency(),
                             entity.getRate()
                     )
             );
@@ -141,8 +143,8 @@ public class ExchangeRateService {
     private Optional<BigDecimal> getFromDatabase(final Currency from, final Currency to) {
         return exchangeRateRepository
                 .findFirstByBaseCurrencyAndTargetCurrencyOrderByTimestampDesc(
-                        from.getCurrencyCode(),
-                        to.getCurrencyCode()
+                        from,
+                        to
                 )
                 .filter(this::isNotTooOld)
                 .map(entity -> {
@@ -150,10 +152,6 @@ public class ExchangeRateService {
                     final BigDecimal rate = entity.getRate();
                     cache.putRate(from, to, rate);
                     return rate;
-                })
-                .or(() -> {
-                    log.debug(LOG_DB_MISS, from.getCurrencyCode(), to.getCurrencyCode());
-                    return Optional.empty();
                 });
     }
 

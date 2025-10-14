@@ -1,6 +1,7 @@
 package com.example.cerpshashkin.service;
 
 import com.example.cerpshashkin.entity.ExchangeRateEntity;
+import com.example.cerpshashkin.entity.ExchangeRateSource;
 import com.example.cerpshashkin.entity.SupportedCurrencyEntity;
 import com.example.cerpshashkin.exception.ExchangeRateNotAvailableException;
 import com.example.cerpshashkin.model.CachedRate;
@@ -31,7 +32,6 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.never;
@@ -48,6 +48,7 @@ class ExchangeRateServiceUnitTest {
     private static final Currency GBP = Currency.getInstance("GBP");
     private static final Currency JPY = Currency.getInstance("JPY");
     private static final LocalDate TEST_DATE = LocalDate.of(2025, 10, 1);
+    private static final int SCALE = 6;
 
     @Mock
     private ExchangeRateProviderService providerService;
@@ -91,7 +92,7 @@ class ExchangeRateServiceUnitTest {
 
         when(cache.getRate(EUR, USD)).thenReturn(Optional.empty());
         when(cache.getRate(USD, EUR)).thenReturn(Optional.empty());
-        when(exchangeRateRepository.findFirstByBaseCurrencyAndTargetCurrencyOrderByTimestampDesc("EUR", "USD"))
+        when(exchangeRateRepository.findFirstByBaseCurrencyAndTargetCurrencyOrderByTimestampDesc(EUR, USD))
                 .thenReturn(Optional.of(entity));
 
         Optional<BigDecimal> result = exchangeRateService.getExchangeRate(EUR, USD);
@@ -109,7 +110,7 @@ class ExchangeRateServiceUnitTest {
 
         when(cache.getRate(EUR, USD)).thenReturn(Optional.empty());
         when(cache.getRate(USD, EUR)).thenReturn(Optional.empty());
-        when(exchangeRateRepository.findFirstByBaseCurrencyAndTargetCurrencyOrderByTimestampDesc("EUR", "USD"))
+        when(exchangeRateRepository.findFirstByBaseCurrencyAndTargetCurrencyOrderByTimestampDesc(EUR, USD))
                 .thenReturn(Optional.of(oldEntity));
 
         CurrencyExchangeResponse response = CurrencyExchangeResponse.success(
@@ -129,7 +130,7 @@ class ExchangeRateServiceUnitTest {
 
         when(cache.getRate(EUR, USD)).thenReturn(Optional.empty());
         when(cache.getRate(USD, EUR)).thenReturn(Optional.empty());
-        when(exchangeRateRepository.findFirstByBaseCurrencyAndTargetCurrencyOrderByTimestampDesc(anyString(), anyString()))
+        when(exchangeRateRepository.findFirstByBaseCurrencyAndTargetCurrencyOrderByTimestampDesc(any(), any()))
                 .thenReturn(Optional.empty());
 
         CurrencyExchangeResponse response = CurrencyExchangeResponse.success(
@@ -147,7 +148,7 @@ class ExchangeRateServiceUnitTest {
     @Test
     void getExchangeRate_WithProviderFailure_ShouldReturnEmpty() {
         when(cache.getRate(any(), any())).thenReturn(Optional.empty());
-        when(exchangeRateRepository.findFirstByBaseCurrencyAndTargetCurrencyOrderByTimestampDesc(anyString(), anyString()))
+        when(exchangeRateRepository.findFirstByBaseCurrencyAndTargetCurrencyOrderByTimestampDesc(any(), any()))
                 .thenReturn(Optional.empty());
         when(providerService.getLatestRatesFromProviders()).thenThrow(new RuntimeException("Provider failed"));
 
@@ -189,7 +190,7 @@ class ExchangeRateServiceUnitTest {
         List<ExchangeRateEntity> savedEntities = captor.getValue();
         assertThat(savedEntities).hasSize(3);
         assertThat(savedEntities)
-                .extracting(ExchangeRateEntity::getTargetCurrency)
+                .extracting(entity -> entity.getTargetCurrency().getCurrencyCode())
                 .containsExactlyInAnyOrder("USD", "GBP", "JPY");
 
         verify(cache, times(3)).putRate(any(), any(), any());
@@ -236,7 +237,7 @@ class ExchangeRateServiceUnitTest {
         List<ExchangeRateEntity> savedEntities = captor.getValue();
         assertThat(savedEntities).hasSize(2);
         assertThat(savedEntities)
-                .extracting(ExchangeRateEntity::getTargetCurrency)
+                .extracting(entity -> entity.getTargetCurrency().getCurrencyCode())
                 .containsExactlyInAnyOrder("USD", "GBP")
                 .doesNotContain("JPY");
 
@@ -270,7 +271,7 @@ class ExchangeRateServiceUnitTest {
 
         List<ExchangeRateEntity> savedEntities = captor.getValue();
         assertThat(savedEntities).hasSize(1);
-        assertThat(savedEntities.get(0).getTargetCurrency()).isEqualTo("USD");
+        assertThat(savedEntities.get(0).getTargetCurrency().getCurrencyCode()).isEqualTo("USD");
     }
 
     @Test
@@ -310,7 +311,7 @@ class ExchangeRateServiceUnitTest {
 
         Optional<BigDecimal> result = exchangeRateService.getExchangeRate(USD, EUR);
 
-        BigDecimal expectedInverse = BigDecimal.ONE.divide(eurToUsd, 6, RoundingMode.HALF_UP);
+        BigDecimal expectedInverse = BigDecimal.ONE.divide(eurToUsd, SCALE, RoundingMode.HALF_UP);
         assertThat(result).isPresent();
         assertThat(result.get()).isEqualByComparingTo(expectedInverse);
         verifyNoInteractions(providerService);
@@ -330,7 +331,7 @@ class ExchangeRateServiceUnitTest {
         Optional<BigDecimal> result = exchangeRateService.getExchangeRate(USD, GBP);
 
         BigDecimal expectedCrossRate = BigDecimal.valueOf(0.87)
-                .divide(BigDecimal.valueOf(1.18), 6, RoundingMode.HALF_UP);
+                .divide(BigDecimal.valueOf(1.18), SCALE, RoundingMode.HALF_UP);
         assertThat(result).isPresent();
         assertThat(result.get()).isEqualByComparingTo(expectedCrossRate);
         verifyNoInteractions(providerService);
@@ -379,10 +380,10 @@ class ExchangeRateServiceUnitTest {
     private ExchangeRateEntity createEntity(Currency base, Currency target, BigDecimal rate, Instant timestamp) {
         return ExchangeRateEntity.builder()
                 .id(UUID.randomUUID())
-                .baseCurrency(base.getCurrencyCode())
-                .targetCurrency(target.getCurrencyCode())
+                .baseCurrency(base)
+                .targetCurrency(target)
                 .rate(rate)
-                .source(ExchangeRateEntity.SOURCE_AGGREGATED)
+                .source(ExchangeRateSource.AGGREGATED)
                 .timestamp(timestamp)
                 .build();
     }

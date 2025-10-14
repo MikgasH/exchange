@@ -8,6 +8,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.time.Instant;
+import java.util.Currency;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -16,8 +17,8 @@ import java.util.UUID;
 public interface ExchangeRateRepository extends JpaRepository<ExchangeRateEntity, UUID> {
 
     Optional<ExchangeRateEntity> findFirstByBaseCurrencyAndTargetCurrencyOrderByTimestampDesc(
-            String baseCurrency,
-            String targetCurrency
+            Currency baseCurrency,
+            Currency targetCurrency
     );
 
     @Query("""
@@ -29,8 +30,8 @@ public interface ExchangeRateRepository extends JpaRepository<ExchangeRateEntity
             ORDER BY e.timestamp ASC
             """)
     List<ExchangeRateEntity> findRatesForPeriod(
-            @Param("baseCurrency") String baseCurrency,
-            @Param("targetCurrency") String targetCurrency,
+            @Param("baseCurrency") Currency baseCurrency,
+            @Param("targetCurrency") Currency targetCurrency,
             @Param("startDate") Instant startDate,
             @Param("endDate") Instant endDate
     );

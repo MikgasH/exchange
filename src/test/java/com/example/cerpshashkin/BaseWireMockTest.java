@@ -12,6 +12,8 @@ import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 
 import java.io.IOException;
+import java.net.URISyntaxException;
+import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 
@@ -56,10 +58,18 @@ public abstract class BaseWireMockTest {
         registry.add("api.currencyapi.url", () -> baseUrl);
     }
 
-    protected String readJsonFile(String fileName) {
+
+    protected String readJsonFile(final String fileName) {
         try {
-            return Files.readString(Paths.get("src/test/resources/test-data/" + fileName));
-        } catch (IOException e) {
+            ClassLoader classLoader = getClass().getClassLoader();
+            URL resource = classLoader.getResource("test-data/" + fileName);
+
+            if (resource == null) {
+                throw new IllegalArgumentException("File not found: test-data/" + fileName);
+            }
+
+            return Files.readString(Paths.get(resource.toURI()));
+        } catch (IOException | URISyntaxException e) {
             throw new RuntimeException("Failed to read test data file: " + fileName, e);
         }
     }
