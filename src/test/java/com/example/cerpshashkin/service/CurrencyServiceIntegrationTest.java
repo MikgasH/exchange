@@ -1,5 +1,6 @@
 package com.example.cerpshashkin.service;
 
+import com.example.cerpshashkin.BaseWireMockTest;
 import com.example.cerpshashkin.dto.ConversionRequest;
 import com.example.cerpshashkin.dto.ConversionResponse;
 import com.example.cerpshashkin.exception.CurrencyNotSupportedException;
@@ -8,6 +9,7 @@ import com.example.cerpshashkin.repository.SupportedCurrencyRepository;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -19,7 +21,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 @SpringBootTest
 @ActiveProfiles("test")
 @Transactional
-class CurrencyServiceIntegrationTest {
+@DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
+class CurrencyServiceIntegrationTest extends BaseWireMockTest {
 
     @Autowired
     private CurrencyService currencyService;

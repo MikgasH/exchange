@@ -2,10 +2,14 @@ package com.example.cerpshashkin;
 
 import com.github.tomakehurst.wiremock.WireMockServer;
 import com.github.tomakehurst.wiremock.client.WireMock;
-import org.junit.jupiter.api.AfterEach;
+import com.github.tomakehurst.wiremock.core.WireMockConfiguration;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.DynamicPropertyRegistry;
+import org.springframework.test.context.DynamicPropertySource;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -15,20 +19,41 @@ import java.nio.file.Paths;
 @ActiveProfiles("test")
 public abstract class BaseWireMockTest {
 
-    protected WireMockServer wireMockServer;
+    protected static WireMockServer wireMockServer;
 
-    @BeforeEach
-    void setUpWireMock() {
-        wireMockServer = new WireMockServer(8080);
+    @BeforeAll
+    static void setUpWireMockServer() {
+        wireMockServer = new WireMockServer(
+                WireMockConfiguration.options().dynamicPort()
+        );
         wireMockServer.start();
-        WireMock.configureFor("localhost", 8080);
+
+        WireMock.configureFor("localhost", wireMockServer.port());
+
+        System.out.println("WireMock started on port: " + wireMockServer.port());
     }
 
-    @AfterEach
-    void tearDownWireMock() {
-        if (wireMockServer != null) {
+    @AfterAll
+    static void tearDownWireMockServer() {
+        if (wireMockServer != null && wireMockServer.isRunning()) {
             wireMockServer.stop();
+            System.out.println("WireMock stopped");
         }
+    }
+
+    @BeforeEach
+    void resetWireMock() {
+        wireMockServer.resetAll();
+
+        WireMock.configureFor("localhost", wireMockServer.port());
+    }
+
+    @DynamicPropertySource
+    static void configureProperties(DynamicPropertyRegistry registry) {
+        String baseUrl = "http://localhost:" + wireMockServer.port();
+        registry.add("api.fixer.url", () -> baseUrl);
+        registry.add("api.exchangerates.url", () -> baseUrl);
+        registry.add("api.currencyapi.url", () -> baseUrl);
     }
 
     protected String readJsonFile(String fileName) {

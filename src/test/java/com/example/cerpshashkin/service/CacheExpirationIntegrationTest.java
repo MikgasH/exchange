@@ -5,8 +5,8 @@ import com.example.cerpshashkin.service.cache.CurrencyRateCache;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.ActiveProfiles;
-
 import java.math.BigDecimal;
 import java.util.Currency;
 import java.util.Optional;
@@ -21,6 +21,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 @SpringBootTest
 @ActiveProfiles("test")
+@DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_EACH_TEST_METHOD)
 class CacheExpirationIntegrationTest extends BaseWireMockTest {
 
     @Autowired
@@ -63,19 +64,19 @@ class CacheExpirationIntegrationTest extends BaseWireMockTest {
                         .withHeader("Content-Type", "application/json")
                         .withBody(readJsonFile("fixer-exchangerates-success-response.json"))));
 
-        exchangeRateService.refreshRates();
+        Currency eur = Currency.getInstance("EUR");
+        Currency usd = Currency.getInstance("USD");
+        BigDecimal initialRate = new BigDecimal("1.250000");
+
+        cache.putRate(eur, usd, initialRate);
 
         wireMockServer.resetRequests();
 
         cache.clearCache();
 
-        Currency eur = Currency.getInstance("EUR");
-        Currency usd = Currency.getInstance("USD");
-
         Optional<BigDecimal> rate = exchangeRateService.getExchangeRate(eur, usd);
 
-        assertThat(rate).isPresent();
-
         verify(1, getRequestedFor(urlEqualTo("/latest?access_key=test-fixer-key")));
+        assertThat(rate).isPresent();
     }
 }
