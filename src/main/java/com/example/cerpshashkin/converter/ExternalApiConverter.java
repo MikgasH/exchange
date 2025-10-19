@@ -33,7 +33,8 @@ public class ExternalApiConverter {
                 fixerResponse.base(),
                 fixerResponse.rateDate(),
                 fixerResponse.rates(),
-                PROVIDER_NAME_FIXER
+                PROVIDER_NAME_FIXER,
+                false
         );
     }
 
@@ -47,7 +48,8 @@ public class ExternalApiConverter {
                 exchangeRatesResponse.base(),
                 exchangeRatesResponse.rateDate(),
                 exchangeRatesResponse.rates(),
-                PROVIDER_NAME_EXCHANGE_RATES
+                PROVIDER_NAME_EXCHANGE_RATES,
+                false
         );
     }
 
@@ -57,7 +59,8 @@ public class ExternalApiConverter {
             final Currency base,
             final LocalDate rateDate,
             final Map<String, BigDecimal> rawRates,
-            final String providerName
+            final String providerName,
+            final boolean isMockData
     ) {
         if (!success) {
             log.warn(WARN_API_UNSUCCESSFUL, providerName);
@@ -82,7 +85,8 @@ public class ExternalApiConverter {
                 lastUpdated,
                 base,
                 rateDate,
-                currencyRates
+                currencyRates,
+                isMockData
         );
     }
 }

@@ -33,7 +33,8 @@ public class CurrencyApiConverter {
         return CurrencyExchangeResponse.success(
                 Currency.getInstance("USD"),
                 raw.meta().lastUpdatedAt().toLocalDate(),
-                rates
+                rates,
+                false
         );
     }
 }

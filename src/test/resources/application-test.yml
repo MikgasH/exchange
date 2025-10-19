@@ -14,15 +14,17 @@ spring:
 
   jpa:
     hibernate:
-      ddl-auto: none
+      ddl-auto: create-drop
     show-sql: false
     properties:
       hibernate:
         dialect: org.hibernate.dialect.H2Dialect
 
   liquibase:
-    enabled: true
-    change-log: classpath:db/changelog/db.changelog-master.yaml
+    enabled: false
+  sql:
+    init:
+      mode: always
 
 scheduling:
   enabled: false
@@ -37,3 +39,7 @@ api:
   currencyapi:
     url: http://dummy-currencyapi-url
     access-key: test-currencyapi-key
+  mock1:
+    url: http://dummy-mock1-url
+  mock2:
+    url: http://dummy-mock2-url

@@ -96,6 +96,12 @@ public class GlobalExceptionHandler {
         );
     }
 
+    @ExceptionHandler(InsufficientDataException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public ProblemDetail handleInsufficientDataException(final InsufficientDataException ex) {
+        return createProblemDetail(HttpStatus.BAD_REQUEST, "Insufficient data", ex.getMessage());
+    }
+
     private ProblemDetail createProblemDetail(final HttpStatus status, final String title, final String detail) {
         ProblemDetail problemDetail = ProblemDetail.forStatus(status.value());
         problemDetail.setTitle(title);

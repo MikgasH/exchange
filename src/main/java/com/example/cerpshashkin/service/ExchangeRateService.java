@@ -37,11 +37,12 @@ public class ExchangeRateService {
     private static final String LOG_CACHE_HIT_CROSS = "Cache HIT: {} -> {} (cross-rate via {})";
     private static final String LOG_CACHE_MISS = "Cache MISS: {} -> {}";
     private static final String LOG_DB_HIT = "Database HIT: {} -> {}";
-    private static final String LOG_DB_MISS = "Database MISS: {} -> {}, fetching from providers";
     private static final String LOG_PROVIDERS_FALLBACK = "Fetching from providers as fallback";
     private static final String LOG_ERROR_REFRESH_RATES = "Failed to refresh exchange rates";
     private static final String LOG_INFO_REFRESHING_RATES = "Refreshing exchange rates from providers";
     private static final String LOG_INFO_RATES_REFRESHED = "Exchange rates refreshed. Saved {} rates to database";
+    private static final String LOG_WARN_MOCK_DATA_RECEIVED = "MOCK DATA. All real providers failed. Updating cache only, NOT saving to database.";
+    private static final String LOG_INFO_MOCK_CACHE_UPDATED = "Mock data cached. Cache will be used for API responses until real providers are available.";
     private static final String ERROR_REFRESH_RATES_MESSAGE = "Failed to refresh exchange rates: ";
     private static final String UNSUCCESSFUL_RESPONSE = "Provider returned unsuccessful response";
     private static final int SCALE = 6;
@@ -84,7 +85,6 @@ public class ExchangeRateService {
     @Transactional
     public void refreshRates() {
         log.info(LOG_INFO_REFRESHING_RATES);
-        cache.clearCache();
 
         try {
             final CurrencyExchangeResponse response = providerService.getLatestRatesFromProviders();
@@ -92,6 +92,18 @@ public class ExchangeRateService {
             if (!response.success()) {
                 throw new ExchangeRateNotAvailableException(ERROR_REFRESH_RATES_MESSAGE + UNSUCCESSFUL_RESPONSE);
             }
+
+            if (response.isMockData()) {
+                log.warn(LOG_WARN_MOCK_DATA_RECEIVED);
+
+                cacheExchangeRates(response);
+
+                log.info(LOG_INFO_MOCK_CACHE_UPDATED);
+
+                return;
+            }
+
+            cache.clearCache();
 
             final Set<String> supportedCodes = getSupportedCurrencyCodes();
             final Instant now = Instant.now();

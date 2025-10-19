@@ -157,8 +157,11 @@ class CurrencyServiceUnitTest {
                 .build();
 
         ConversionResponse expectedResponse = ConversionResponse.success(
-                BigDecimal.valueOf(100), "USD", "EUR",
-                BigDecimal.valueOf(85), BigDecimal.valueOf(0.85), "test"
+                BigDecimal.valueOf(100),
+                "USD",
+                "EUR",
+                BigDecimal.valueOf(85),
+                BigDecimal.valueOf(0.85)
         );
 
         when(conversionService.convertCurrency(request)).thenReturn(expectedResponse);

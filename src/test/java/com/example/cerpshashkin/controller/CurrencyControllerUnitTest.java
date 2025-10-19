@@ -106,8 +106,7 @@ class CurrencyControllerUnitTest {
         ConversionResponse successResponse = ConversionResponse.success(
                 amount, from, to,
                 BigDecimal.valueOf(85.0),
-                BigDecimal.valueOf(0.85),
-                "test-provider"
+                BigDecimal.valueOf(0.85)
         );
 
         doNothing().when(currencyService).validateSupportedCurrencies(from, to);
@@ -124,8 +123,7 @@ class CurrencyControllerUnitTest {
                 .andExpect(jsonPath("$.fromCurrency").value("USD"))
                 .andExpect(jsonPath("$.toCurrency").value("EUR"))
                 .andExpect(jsonPath("$.convertedAmount").value(85.0))
-                .andExpect(jsonPath("$.exchangeRate").value(0.85))
-                .andExpect(jsonPath("$.provider").value("test-provider"));
+                .andExpect(jsonPath("$.exchangeRate").value(0.85));
 
         verify(currencyService, times(1)).validateSupportedCurrencies(from, to);
         verify(currencyService, times(1)).convertCurrency(any(ConversionRequest.class));

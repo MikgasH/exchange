@@ -36,6 +36,10 @@ api:
   currencyapi:
     url: https://api.currencyapi.com/v3
     access-key: ${CURRENCYAPI_KEY}
+  mock1:
+    url: ${MOCK_SERVICE_1_URL:http://localhost:8081}
+  mock2:
+    url: ${MOCK_SERVICE_2_URL:http://localhost:8082}
 
 cache:
   exchange-rates:

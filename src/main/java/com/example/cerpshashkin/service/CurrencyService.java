@@ -2,6 +2,8 @@ package com.example.cerpshashkin.service;
 
 import com.example.cerpshashkin.dto.ConversionRequest;
 import com.example.cerpshashkin.dto.ConversionResponse;
+import com.example.cerpshashkin.dto.TrendsRequest;
+import com.example.cerpshashkin.dto.TrendsResponse;
 import com.example.cerpshashkin.entity.SupportedCurrencyEntity;
 import com.example.cerpshashkin.exception.CurrencyNotSupportedException;
 import com.example.cerpshashkin.exception.InvalidCurrencyException;
@@ -26,11 +28,13 @@ public class CurrencyService {
     private static final String LOG_CURRENCY_ALREADY_EXISTS = "Currency {} already exists";
     private static final String LOG_CONVERT_REQUEST = "Processing currency conversion request";
     private static final String LOG_REFRESH_RATES = "Refreshing exchange rates";
+    private static final String LOG_TRENDS_REQUEST = "Processing trends request";
     private static final String ERROR_CURRENCY_NULL_OR_EMPTY = "Currency code cannot be null or empty";
 
     private final CurrencyConversionService conversionService;
     private final ExchangeRateService exchangeRateService;
     private final SupportedCurrencyRepository supportedCurrencyRepository;
+    private final TrendsService trendsService;
 
     public List<String> getSupportedCurrencies() {
         log.info(LOG_GET_SUPPORTED);
@@ -70,6 +74,11 @@ public class CurrencyService {
     public void refreshExchangeRates() {
         log.info(LOG_REFRESH_RATES);
         exchangeRateService.refreshRates();
+    }
+
+    public TrendsResponse getTrends(final TrendsRequest request) {
+        log.info(LOG_TRENDS_REQUEST);
+        return trendsService.calculateTrends(request);
     }
 
     public void validateSupportedCurrencies(final String from, final String to) {

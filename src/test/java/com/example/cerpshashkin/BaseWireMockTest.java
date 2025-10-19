@@ -3,8 +3,6 @@ package com.example.cerpshashkin;
 import com.github.tomakehurst.wiremock.WireMockServer;
 import com.github.tomakehurst.wiremock.client.WireMock;
 import com.github.tomakehurst.wiremock.core.WireMockConfiguration;
-import org.junit.jupiter.api.AfterAll;
-import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
@@ -17,37 +15,26 @@ import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 
+import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
+import static com.github.tomakehurst.wiremock.client.WireMock.get;
+import static com.github.tomakehurst.wiremock.client.WireMock.matching;
+import static com.github.tomakehurst.wiremock.client.WireMock.stubFor;
+import static com.github.tomakehurst.wiremock.client.WireMock.urlPathEqualTo;
+import static com.github.tomakehurst.wiremock.client.WireMock.urlPathMatching;
+
 @SpringBootTest
 @ActiveProfiles("test")
 public abstract class BaseWireMockTest {
 
-    protected static WireMockServer wireMockServer;
+    protected static final WireMockServer wireMockServer;
 
-    @BeforeAll
-    static void setUpWireMockServer() {
+    static {
         wireMockServer = new WireMockServer(
                 WireMockConfiguration.options().dynamicPort()
         );
         wireMockServer.start();
-
         WireMock.configureFor("localhost", wireMockServer.port());
-
-        System.out.println("WireMock started on port: " + wireMockServer.port());
-    }
-
-    @AfterAll
-    static void tearDownWireMockServer() {
-        if (wireMockServer != null && wireMockServer.isRunning()) {
-            wireMockServer.stop();
-            System.out.println("WireMock stopped");
-        }
-    }
-
-    @BeforeEach
-    void resetWireMock() {
-        wireMockServer.resetAll();
-
-        WireMock.configureFor("localhost", wireMockServer.port());
+        System.out.println("WireMock started successfully on port: " + wireMockServer.port());
     }
 
     @DynamicPropertySource
@@ -56,8 +43,71 @@ public abstract class BaseWireMockTest {
         registry.add("api.fixer.url", () -> baseUrl);
         registry.add("api.exchangerates.url", () -> baseUrl);
         registry.add("api.currencyapi.url", () -> baseUrl);
+        registry.add("api.mock1.url", () -> baseUrl);
+        registry.add("api.mock2.url", () -> baseUrl);
     }
 
+    @BeforeEach
+    void resetWireMock() {
+        if (wireMockServer.isRunning()) {
+            wireMockServer.resetAll();
+            WireMock.configureFor("localhost", wireMockServer.port());
+            setupDefaultWireMockStubs();
+        } else {
+            System.err.println("WireMock server is NOT running before test execution. Skipping reset.");
+        }
+    }
+
+    protected void setupDefaultWireMockStubs() {
+        setupFixerStub();
+        setupExchangeRatesStub();
+        setupCurrencyApiStub();
+        setupMockService1Stub();
+        setupMockService2Stub();
+    }
+
+    protected void setupFixerStub() {
+        stubFor(get(urlPathMatching("/latest"))
+                .withQueryParam("access_key", matching(".*"))
+                .willReturn(aResponse()
+                        .withStatus(200)
+                        .withHeader("Content-Type", "application/json")
+                        .withBody(readJsonFile("fixer-exchangerates-success-response.json"))));
+    }
+
+    protected void setupExchangeRatesStub() {
+        stubFor(get(urlPathMatching("/latest"))
+                .withQueryParam("access_key", matching(".*"))
+                .willReturn(aResponse()
+                        .withStatus(200)
+                        .withHeader("Content-Type", "application/json")
+                        .withBody(readJsonFile("fixer-exchangerates-success-response.json"))));
+    }
+
+    protected void setupCurrencyApiStub() {
+        stubFor(get(urlPathMatching("/latest"))
+                .withQueryParam("apikey", matching(".*"))
+                .willReturn(aResponse()
+                        .withStatus(200)
+                        .withHeader("Content-Type", "application/json")
+                        .withBody(readJsonFile("currencyapi-success-response.json"))));
+    }
+
+    protected void setupMockService1Stub() {
+        stubFor(get(urlPathEqualTo("/api/rates/latest"))
+                .willReturn(aResponse()
+                        .withStatus(200)
+                        .withHeader("Content-Type", "application/json")
+                        .withBody(readJsonFile("mock-service-success-response.json"))));
+    }
+
+    protected void setupMockService2Stub() {
+        stubFor(get(urlPathEqualTo("/api/rates/latest"))
+                .willReturn(aResponse()
+                        .withStatus(200)
+                        .withHeader("Content-Type", "application/json")
+                        .withBody(readJsonFile("mock-service-success-response.json"))));
+    }
 
     protected String readJsonFile(final String fileName) {
         try {

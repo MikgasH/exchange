@@ -82,14 +82,12 @@ class CurrencyServiceIntegrationTest extends BaseWireMockTest {
                 .extracting(
                         ConversionResponse::success,
                         ConversionResponse::convertedAmount,
-                        ConversionResponse::exchangeRate,
-                        ConversionResponse::provider
+                        ConversionResponse::exchangeRate
                 )
                 .containsExactly(
                         true,
                         BigDecimal.valueOf(100),
-                        BigDecimal.ONE,
-                        "Same Currency"
+                        BigDecimal.ONE
                 );
     }
 

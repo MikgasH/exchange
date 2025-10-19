@@ -2,6 +2,8 @@ package com.example.cerpshashkin.controller;
 
 import com.example.cerpshashkin.dto.ConversionRequest;
 import com.example.cerpshashkin.dto.ConversionResponse;
+import com.example.cerpshashkin.dto.TrendsRequest;
+import com.example.cerpshashkin.dto.TrendsResponse;
 import com.example.cerpshashkin.service.CurrencyService;
 import com.example.cerpshashkin.validation.ValidCurrency;
 import jakarta.validation.Valid;
@@ -34,6 +36,8 @@ public class CurrencyController {
     private static final String LOG_CONVERSION_SUCCESS = "Conversion successful: {} {} = {} {}";
     private static final String LOG_REFRESH_RATES = "POST /api/v1/currencies/refresh - refreshing exchange rates";
     private static final String LOG_RATES_REFRESHED = "Exchange rates refreshed successfully";
+    private static final String LOG_TRENDS_REQUEST = "GET /api/v1/currencies/trends - getting trends for {} -> {} over {}";
+    private static final String LOG_TRENDS_SUCCESS = "Trends calculated: change {}%";
 
     private static final String MESSAGE_CURRENCY_ADDED = "Currency %s added successfully";
     private static final String MESSAGE_RATES_UPDATED = "Exchange rates updated successfully";
@@ -88,5 +92,15 @@ public class CurrencyController {
         currencyService.refreshExchangeRates();
         log.info(LOG_RATES_REFRESHED);
         return ResponseEntity.ok(MESSAGE_RATES_UPDATED);
+    }
+
+    @GetMapping("/trends")
+    public ResponseEntity<TrendsResponse> getTrends(
+            @Valid @ModelAttribute final TrendsRequest request) {
+        log.info(LOG_TRENDS_REQUEST, request.from(), request.to(), request.period());
+        currencyService.validateSupportedCurrencies(request.from(), request.to());
+        final TrendsResponse response = currencyService.getTrends(request);
+        log.info(LOG_TRENDS_SUCCESS, response.changePercentage());
+        return ResponseEntity.ok(response);
     }
 }
