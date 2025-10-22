@@ -14,7 +14,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class CurrencyExchangeResponseTest {
 
     @Test
-    void success_ShouldCreateSuccessfulResponse() {
+    void success_ShouldCreateSuccessfulResponse_WithRealData() {
         Currency base = Currency.getInstance("USD");
         LocalDate rateDate = LocalDate.now();
         Map<Currency, BigDecimal> rates = Map.of(
@@ -22,7 +22,12 @@ class CurrencyExchangeResponseTest {
                 Currency.getInstance("GBP"), BigDecimal.valueOf(0.75)
         );
 
-        CurrencyExchangeResponse response = CurrencyExchangeResponse.success(base, rateDate, rates);
+        CurrencyExchangeResponse response = CurrencyExchangeResponse.success(
+                base,
+                rateDate,
+                rates,
+                false
+        );
 
         assertThat(response).isNotNull();
         assertThat(response.success()).isTrue();
@@ -31,6 +36,7 @@ class CurrencyExchangeResponseTest {
         assertThat(response.rates()).isEqualTo(rates);
         assertThat(response.lastUpdated()).isNotNull();
         assertThat(response.lastUpdated()).isBeforeOrEqualTo(Instant.now());
+        assertThat(response.isMockData()).isFalse();
     }
 
     @Test
@@ -54,7 +60,12 @@ class CurrencyExchangeResponseTest {
         Map<Currency, BigDecimal> rates = Map.of(Currency.getInstance("USD"), BigDecimal.valueOf(1.18));
 
         CurrencyExchangeResponse response = new CurrencyExchangeResponse(
-                true, lastUpdated, base, rateDate, rates
+                true,
+                lastUpdated,
+                base,
+                rateDate,
+                rates,
+                false
         );
 
         assertThat(response.success()).isTrue();
@@ -62,6 +73,7 @@ class CurrencyExchangeResponseTest {
         assertThat(response.base()).isEqualTo(base);
         assertThat(response.rateDate()).isEqualTo(rateDate);
         assertThat(response.rates()).isEqualTo(rates);
+        assertThat(response.isMockData()).isFalse();
     }
 
     @Test
@@ -70,11 +82,17 @@ class CurrencyExchangeResponseTest {
         LocalDate rateDate = LocalDate.now();
         Map<Currency, BigDecimal> emptyRates = Map.of();
 
-        CurrencyExchangeResponse response = CurrencyExchangeResponse.success(base, rateDate, emptyRates);
+        CurrencyExchangeResponse response = CurrencyExchangeResponse.success(
+                base,
+                rateDate,
+                emptyRates,
+                false
+        );
 
         assertThat(response).isNotNull();
         assertThat(response.success()).isTrue();
         assertThat(response.rates()).isEmpty();
+        assertThat(response.isMockData()).isFalse();
     }
 
     @Test
@@ -84,8 +102,22 @@ class CurrencyExchangeResponseTest {
         Map<Currency, BigDecimal> rates = Map.of(Currency.getInstance("EUR"), BigDecimal.valueOf(0.85));
         Instant timestamp = Instant.now();
 
-        CurrencyExchangeResponse response1 = new CurrencyExchangeResponse(true, timestamp, base, rateDate, rates);
-        CurrencyExchangeResponse response2 = new CurrencyExchangeResponse(true, timestamp, base, rateDate, rates);
+        CurrencyExchangeResponse response1 = new CurrencyExchangeResponse(
+                true,
+                timestamp,
+                base,
+                rateDate,
+                rates,
+                false
+        );
+        CurrencyExchangeResponse response2 = new CurrencyExchangeResponse(
+                true,
+                timestamp,
+                base,
+                rateDate,
+                rates,
+                false
+        );
 
         assertThat(response1).isEqualTo(response2)
                 .hasSameHashCodeAs(response2);

@@ -4,21 +4,13 @@ import com.example.cerpshashkin.BaseWireMockTest;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.test.context.ActiveProfiles;
 
 import java.math.BigDecimal;
 import java.util.Currency;
 import java.util.Optional;
 
-import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
-import static com.github.tomakehurst.wiremock.client.WireMock.get;
-import static com.github.tomakehurst.wiremock.client.WireMock.stubFor;
-import static com.github.tomakehurst.wiremock.client.WireMock.urlEqualTo;
 import static org.assertj.core.api.Assertions.assertThat;
 
-@SpringBootTest
-@ActiveProfiles("test")
 class ExchangeRateServiceCacheIntegrationTest extends BaseWireMockTest {
 
     @Autowired
@@ -36,11 +28,6 @@ class ExchangeRateServiceCacheIntegrationTest extends BaseWireMockTest {
         gbp = Currency.getInstance("GBP");
         jpy = Currency.getInstance("JPY");
 
-        stubFor(get(urlEqualTo("/latest?access_key=test-fixer-key"))
-                .willReturn(aResponse()
-                        .withStatus(200)
-                        .withHeader("Content-Type", "application/json")
-                        .withBody(readJsonFile("fixer-exchangerates-success-response.json"))));
         exchangeRateService.refreshRates();
     }
 
@@ -49,7 +36,7 @@ class ExchangeRateServiceCacheIntegrationTest extends BaseWireMockTest {
         Optional<BigDecimal> result = exchangeRateService.getExchangeRate(eur, usd);
 
         assertThat(result).isPresent();
-        assertThat(result.get()).isGreaterThan(BigDecimal.ZERO);
+        assertThat(result.get()).isPositive();
     }
 
     @Test
@@ -57,7 +44,7 @@ class ExchangeRateServiceCacheIntegrationTest extends BaseWireMockTest {
         Optional<BigDecimal> result = exchangeRateService.getExchangeRate(eur, gbp);
 
         assertThat(result).isPresent();
-        assertThat(result.get()).isGreaterThan(BigDecimal.ZERO);
+        assertThat(result.get()).isPositive();
     }
 
     @Test
@@ -65,7 +52,7 @@ class ExchangeRateServiceCacheIntegrationTest extends BaseWireMockTest {
         Optional<BigDecimal> result = exchangeRateService.getExchangeRate(eur, jpy);
 
         assertThat(result).isPresent();
-        assertThat(result.get()).isGreaterThan(BigDecimal.ZERO);
+        assertThat(result.get()).isPositive();
     }
 
     @Test
@@ -73,7 +60,7 @@ class ExchangeRateServiceCacheIntegrationTest extends BaseWireMockTest {
         Optional<BigDecimal> result = exchangeRateService.getExchangeRate(usd, eur);
 
         assertThat(result).isPresent();
-        assertThat(result.get()).isGreaterThan(BigDecimal.ZERO);
+        assertThat(result.get()).isPositive();
     }
 
     @Test
@@ -81,7 +68,7 @@ class ExchangeRateServiceCacheIntegrationTest extends BaseWireMockTest {
         Optional<BigDecimal> result = exchangeRateService.getExchangeRate(gbp, eur);
 
         assertThat(result).isPresent();
-        assertThat(result.get()).isGreaterThan(BigDecimal.ZERO);
+        assertThat(result.get()).isPositive();
     }
 
     @Test
@@ -89,7 +76,7 @@ class ExchangeRateServiceCacheIntegrationTest extends BaseWireMockTest {
         Optional<BigDecimal> result = exchangeRateService.getExchangeRate(jpy, eur);
 
         assertThat(result).isPresent();
-        assertThat(result.get()).isGreaterThan(BigDecimal.ZERO);
+        assertThat(result.get()).isPositive();
     }
 
     @Test
@@ -97,7 +84,7 @@ class ExchangeRateServiceCacheIntegrationTest extends BaseWireMockTest {
         Optional<BigDecimal> result = exchangeRateService.getExchangeRate(usd, gbp);
 
         assertThat(result).isPresent();
-        assertThat(result.get()).isGreaterThan(BigDecimal.ZERO);
+        assertThat(result.get()).isPositive();
     }
 
     @Test
@@ -105,7 +92,7 @@ class ExchangeRateServiceCacheIntegrationTest extends BaseWireMockTest {
         Optional<BigDecimal> result = exchangeRateService.getExchangeRate(gbp, usd);
 
         assertThat(result).isPresent();
-        assertThat(result.get()).isGreaterThan(BigDecimal.ZERO);
+        assertThat(result.get()).isPositive();
     }
 
     @Test
@@ -113,7 +100,7 @@ class ExchangeRateServiceCacheIntegrationTest extends BaseWireMockTest {
         Optional<BigDecimal> result = exchangeRateService.getExchangeRate(usd, jpy);
 
         assertThat(result).isPresent();
-        assertThat(result.get()).isGreaterThan(BigDecimal.ZERO);
+        assertThat(result.get()).isPositive();
     }
 
     @Test
@@ -121,7 +108,7 @@ class ExchangeRateServiceCacheIntegrationTest extends BaseWireMockTest {
         Optional<BigDecimal> result = exchangeRateService.getExchangeRate(gbp, jpy);
 
         assertThat(result).isPresent();
-        assertThat(result.get()).isGreaterThan(BigDecimal.ZERO);
+        assertThat(result.get()).isPositive();
     }
 
     @Test
@@ -144,7 +131,7 @@ class ExchangeRateServiceCacheIntegrationTest extends BaseWireMockTest {
 
                 assertThat(result.get())
                         .as("Rate for %s -> %s should be positive", from, to)
-                        .isGreaterThan(BigDecimal.ZERO);
+                        .isPositive();
 
                 successfulConversions++;
             }
@@ -165,7 +152,7 @@ class ExchangeRateServiceCacheIntegrationTest extends BaseWireMockTest {
 
         assertThat(roundTrip).isCloseTo(
                 BigDecimal.ONE,
-                org.assertj.core.data.Offset.offset(BigDecimal.valueOf(0.01))
+                org.assertj.core.data.Offset.offset(new BigDecimal("0.01"))
         );
     }
 
@@ -184,7 +171,7 @@ class ExchangeRateServiceCacheIntegrationTest extends BaseWireMockTest {
 
         assertThat(direct.get()).isCloseTo(
                 viaChain,
-                org.assertj.core.data.Offset.offset(BigDecimal.valueOf(0.000001))
+                org.assertj.core.data.Offset.offset(new BigDecimal("0.000001"))
         );
     }
 }

@@ -2,6 +2,7 @@ package com.example.cerpshashkin.controller;
 
 import com.example.cerpshashkin.dto.ConversionRequest;
 import com.example.cerpshashkin.dto.ConversionResponse;
+import com.example.cerpshashkin.exception.CurrencyNotSupportedException;
 import com.example.cerpshashkin.exception.RateNotAvailableException;
 import com.example.cerpshashkin.service.CurrencyService;
 import org.junit.jupiter.api.Test;
@@ -14,12 +15,13 @@ import java.math.BigDecimal;
 import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
@@ -97,30 +99,6 @@ class CurrencyControllerUnitTest {
     }
 
     @Test
-    void deleteCurrency_ShouldReturnSuccessMessage_WhenServiceSucceeds() throws Exception {
-        String currency = "NOK";
-        doNothing().when(currencyService).removeCurrency(currency);
-
-        mockMvc.perform(delete("/api/v1/currencies/{currency}", currency))
-                .andExpect(status().isOk())
-                .andExpect(content().string("Currency NOK removed successfully"));
-
-        verify(currencyService, times(1)).removeCurrency(currency);
-    }
-
-    @Test
-    void deleteCurrency_ShouldReturnBadRequest_WhenCurrencyIsInvalid() throws Exception {
-        String currency = "INVALID";
-
-        mockMvc.perform(delete("/api/v1/currencies/{currency}", currency))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.title").value("Validation error"))
-                .andExpect(jsonPath("$.detail").value("deleteCurrency.currency: Invalid currency code"));
-
-        verify(currencyService, never()).removeCurrency(any());
-    }
-
-    @Test
     void getExchangeRates_ShouldReturnSuccessResponse_WhenConversionIsSuccessful() throws Exception {
         BigDecimal amount = BigDecimal.valueOf(100);
         String from = "USD";
@@ -128,10 +106,10 @@ class CurrencyControllerUnitTest {
         ConversionResponse successResponse = ConversionResponse.success(
                 amount, from, to,
                 BigDecimal.valueOf(85.0),
-                BigDecimal.valueOf(0.85),
-                "test-provider"
+                BigDecimal.valueOf(0.85)
         );
 
+        doNothing().when(currencyService).validateSupportedCurrencies(from, to);
         when(currencyService.convertCurrency(any(ConversionRequest.class)))
                 .thenReturn(successResponse);
 
@@ -145,25 +123,64 @@ class CurrencyControllerUnitTest {
                 .andExpect(jsonPath("$.fromCurrency").value("USD"))
                 .andExpect(jsonPath("$.toCurrency").value("EUR"))
                 .andExpect(jsonPath("$.convertedAmount").value(85.0))
-                .andExpect(jsonPath("$.exchangeRate").value(0.85))
-                .andExpect(jsonPath("$.provider").value("test-provider"));
+                .andExpect(jsonPath("$.exchangeRate").value(0.85));
 
+        verify(currencyService, times(1)).validateSupportedCurrencies(from, to);
         verify(currencyService, times(1)).convertCurrency(any(ConversionRequest.class));
     }
 
     @Test
+    void getExchangeRates_ShouldReturnBadRequest_WhenCurrencyNotSupported() throws Exception {
+        String from = "USD";
+        String to = "XAU";
+
+        doNothing().when(currencyService).validateSupportedCurrencies(from, to);
+        doThrow(new CurrencyNotSupportedException("XAU", List.of("USD", "EUR", "GBP")))
+                .when(currencyService).convertCurrency(any(ConversionRequest.class));
+
+        mockMvc.perform(get("/api/v1/currencies/exchange-rates")
+                        .param("amount", "100")
+                        .param("from", from)
+                        .param("to", to))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.title").value("Currency Not Supported"))
+                .andExpect(jsonPath("$.detail").value("Currency 'XAU' is not supported. Available currencies: USD, EUR, GBP"));
+
+        verify(currencyService, times(1)).validateSupportedCurrencies(from, to);
+        verify(currencyService, times(1)).convertCurrency(any(ConversionRequest.class));
+    }
+
+    @Test
+    void getExchangeRates_ShouldReturnBadRequest_WhenToInvalid() throws Exception {
+        mockMvc.perform(get("/api/v1/currencies/exchange-rates")
+                        .param("amount", "100")
+                        .param("from", "USD")
+                        .param("to", "INVALID"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.title").value("Validation error"))
+                .andExpect(jsonPath("$.detail").value("to: Invalid target currency code"));
+
+        verify(currencyService, never()).validateSupportedCurrencies(anyString(), anyString());
+    }
+
+    @Test
     void getExchangeRates_ShouldReturnServiceUnavailable_WhenRateNotAvailable() throws Exception {
+        String from = "USD";
+        String to = "EUR";
+
+        doNothing().when(currencyService).validateSupportedCurrencies(from, to);
         when(currencyService.convertCurrency(any(ConversionRequest.class)))
                 .thenThrow(new RateNotAvailableException("USD", "EUR"));
 
         mockMvc.perform(get("/api/v1/currencies/exchange-rates")
                         .param("amount", "100")
-                        .param("from", "USD")
-                        .param("to", "EUR"))
+                        .param("from", from)
+                        .param("to", to))
                 .andExpect(status().isServiceUnavailable())
                 .andExpect(jsonPath("$.title").value("Exchange rate not available"))
                 .andExpect(jsonPath("$.detail").value("Exchange rate not available for USD -> EUR"));
 
+        verify(currencyService, times(1)).validateSupportedCurrencies(from, to);
         verify(currencyService, times(1)).convertCurrency(any(ConversionRequest.class));
     }
 
@@ -174,6 +191,7 @@ class CurrencyControllerUnitTest {
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.title").value("Validation error"));
 
+        verify(currencyService, never()).validateSupportedCurrencies(anyString(), anyString());
         verify(currencyService, never()).convertCurrency(any());
     }
 
@@ -186,6 +204,7 @@ class CurrencyControllerUnitTest {
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.title").value("Validation error"));
 
+        verify(currencyService, never()).validateSupportedCurrencies(anyString(), anyString());
         verify(currencyService, never()).convertCurrency(any());
     }
 
@@ -198,6 +217,7 @@ class CurrencyControllerUnitTest {
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.title").value("Validation error"));
 
+        verify(currencyService, never()).validateSupportedCurrencies(anyString(), anyString());
         verify(currencyService, never()).convertCurrency(any());
     }
 
@@ -211,6 +231,7 @@ class CurrencyControllerUnitTest {
                 .andExpect(jsonPath("$.title").value("Validation error"))
                 .andExpect(jsonPath("$.detail").value("from: Invalid source currency code"));
 
+        verify(currencyService, never()).validateSupportedCurrencies(anyString(), anyString());
         verify(currencyService, never()).convertCurrency(any());
     }
 

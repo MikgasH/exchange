@@ -27,10 +27,12 @@ public class ExchangeRateProviderService {
     private static final String PROVIDER_FAILED_MESSAGE = "Provider {} failed with error: {}";
     private static final String TRYING_PROVIDER_MESSAGE = "Trying to get rates from provider: {}";
     private static final String COLLECTING_RATES_MESSAGE = "Collecting rates from all available providers";
-    private static final String COLLECTED_RATES_MESSAGE = "Collected rates from {} providers";
+    private static final String COLLECTED_RATES_MESSAGE = "Collected rates from {} real providers";
     private static final String SELECTING_BEST_RATES_MESSAGE = "Selecting median rates for {} currency pairs";
     private static final String NORMALIZING_TO_BASE_MESSAGE = "Normalizing {} responses to base currency: {}";
-    private static final String USING_FALLBACK_MESSAGE = "All real providers failed, using fallback provider";
+    private static final String USING_FALLBACK_MESSAGE = "All real providers failed, using fallback mock services";
+    private static final String USING_SINGLE_PROVIDER_MESSAGE = "Single provider response, using directly";
+    private static final String USING_MOCK_SERVICES_MESSAGE = "Using {} mock services for fallback";
     private static final String MEDIAN_EMPTY_LIST_ERROR = "Cannot calculate median of empty list";
     private static final String LOG_WARN_CONVERSION_RATE_NOT_FOUND = "Cannot find conversion rate from {} to {}, skipping normalization";
     private static final int SCALE = 6;
@@ -49,24 +51,26 @@ public class ExchangeRateProviderService {
 
         final List<CurrencyExchangeResponse> realProviderResponses = collectRatesFromRealProviders(symbols);
 
-        return Optional.of(realProviderResponses)
-                .filter(responses -> !responses.isEmpty())
-                .map(responses -> {
-                    log.info(COLLECTED_RATES_MESSAGE, responses.size());
-                    return selectMedianRates(responses);
-                })
-                .orElseGet(() -> {
-                    log.warn(USING_FALLBACK_MESSAGE);
-                    return getFallbackRates(symbols);
-                });
+        if (!realProviderResponses.isEmpty()) {
+            log.info(COLLECTED_RATES_MESSAGE, realProviderResponses.size());
+            return aggregateRates(realProviderResponses, false);  // false = real data
+        }
+
+        log.warn(USING_FALLBACK_MESSAGE);
+        return getFallbackRatesFromMockServices(symbols);
     }
 
     private List<CurrencyExchangeResponse> collectRatesFromRealProviders(final String symbols) {
         return clients.stream()
-                .filter(client -> !ApiProvider.MOCK.getDisplayName().equals(client.getProviderName()))
+                .filter(client -> isRealProvider(client.getProviderName()))
                 .map(client -> tryGetRatesFromClient(client, symbols))
                 .flatMap(Optional::stream)
                 .toList();
+    }
+
+    private boolean isRealProvider(final String providerName) {
+        return !providerName.equals(ApiProvider.MOCK_SERVICE_1.getDisplayName())
+                && !providerName.equals(ApiProvider.MOCK_SERVICE_2.getDisplayName());
     }
 
     private Optional<CurrencyExchangeResponse> tryGetRatesFromClient(
@@ -91,19 +95,58 @@ public class ExchangeRateProviderService {
         }
     }
 
-    private CurrencyExchangeResponse getFallbackRates(final String symbols) {
-        return clients.stream()
-                .filter(client -> ApiProvider.MOCK.getDisplayName().equals(client.getProviderName()))
-                .findFirst()
-                .flatMap(client -> tryGetRatesFromClient(client, symbols))
-                .orElseThrow(() -> new AllProvidersFailedException(
-                        clients.stream()
-                                .map(ExchangeRateClient::getProviderName)
-                                .toList()
-                ));
+    private CurrencyExchangeResponse getFallbackRatesFromMockServices(final String symbols) {
+        final List<CurrencyExchangeResponse> mockResponses = clients.stream()
+                .filter(client -> !isRealProvider(client.getProviderName()))
+                .map(client -> tryGetRatesFromClient(client, symbols))
+                .flatMap(Optional::stream)
+                .toList();
+
+        if (mockResponses.isEmpty()) {
+            throw new AllProvidersFailedException(
+                    clients.stream()
+                            .map(ExchangeRateClient::getProviderName)
+                            .toList()
+            );
+        }
+
+        log.info(USING_MOCK_SERVICES_MESSAGE, mockResponses.size());
+        return aggregateRates(mockResponses, true);  // true = mock data
     }
 
-    private CurrencyExchangeResponse selectMedianRates(final List<CurrencyExchangeResponse> allResponses) {
+    private CurrencyExchangeResponse aggregateRates(
+            final List<CurrencyExchangeResponse> allResponses,
+            final boolean isMockData) {
+
+        final Currency targetBase = getTargetBaseCurrency();
+
+        if (allResponses.size() == 1) {
+            final CurrencyExchangeResponse response = allResponses.getFirst();
+
+            if (response.base().equals(targetBase)) {
+                log.info(USING_SINGLE_PROVIDER_MESSAGE);
+                // Return with correct isMockData flag
+                return new CurrencyExchangeResponse(
+                        response.success(),
+                        response.lastUpdated(),
+                        response.base(),
+                        response.rateDate(),
+                        response.rates(),
+                        isMockData
+                );
+            }
+
+            log.info("Normalizing single provider from {} to {}", response.base(), targetBase);
+            return selectMedianRates(allResponses, isMockData);
+        }
+
+        return selectMedianRates(allResponses, isMockData);
+    }
+
+    private CurrencyExchangeResponse selectMedianRates(
+            final List<CurrencyExchangeResponse> allResponses,
+            final boolean isMockData) {
+
         final Currency targetBase = getTargetBaseCurrency();
 
         log.info(NORMALIZING_TO_BASE_MESSAGE, allResponses.size(), targetBase);
@@ -132,7 +175,8 @@ public class ExchangeRateProviderService {
         return CurrencyExchangeResponse.success(
                 targetBase,
                 allResponses.getFirst().rateDate(),
-                medianRates
+                medianRates,
+                isMockData
         );
     }
 

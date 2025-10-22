@@ -1,0 +1,10 @@
+INSERT INTO supported_currencies (currency_code) VALUES ('USD');
+INSERT INTO supported_currencies (currency_code) VALUES ('EUR');
+INSERT INTO supported_currencies (currency_code) VALUES ('GBP');
+INSERT INTO supported_currencies (currency_code) VALUES ('JPY');
+INSERT INTO supported_currencies (currency_code) VALUES ('CHF');
+INSERT INTO supported_currencies (currency_code) VALUES ('CAD');
+INSERT INTO supported_currencies (currency_code) VALUES ('AUD');
+INSERT INTO supported_currencies (currency_code) VALUES ('CNY');
+INSERT INTO supported_currencies (currency_code) VALUES ('SEK');
+INSERT INTO supported_currencies (currency_code) VALUES ('NZD');

@@ -2,6 +2,21 @@ spring:
   application:
     name: CERPS-Hashkin
 
+  datasource:
+    url: ${SPRING_DATASOURCE_URL}
+    username: ${SPRING_DATASOURCE_USERNAME}
+    password: ${SPRING_DATASOURCE_PASSWORD}
+
+  jpa:
+    hibernate:
+      ddl-auto: none
+    show-sql: false
+    open-in-view: false
+
+  liquibase:
+    change-log: classpath:db/changelog/db.changelog-master.yaml
+    enabled: true
+
 spring.http.client:
   connect-timeout: 5s
   read-timeout: 10s
@@ -14,13 +29,17 @@ scheduling:
 api:
   fixer:
     url: https://data.fixer.io/api
-    access-key: ${FIXER_API_KEY:}
+    access-key: ${FIXER_API_KEY}
   exchangerates:
     url: https://api.exchangeratesapi.io/v1
-    access-key: ${EXCHANGERATES_API_KEY:}
+    access-key: ${EXCHANGERATES_API_KEY}
   currencyapi:
     url: https://api.currencyapi.com/v3
-    access-key: ${CURRENCYAPI_KEY:}
+    access-key: ${CURRENCYAPI_KEY}
+  mock1:
+    url: ${MOCK_SERVICE_1_URL:http://localhost:8081}
+  mock2:
+    url: ${MOCK_SERVICE_2_URL:http://localhost:8082}
 
 cache:
   exchange-rates:

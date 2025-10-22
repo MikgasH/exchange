@@ -51,7 +51,7 @@ class ExchangeRateProviderServiceUnitTest {
         when(fixerClient.getProviderName()).thenReturn(ApiProvider.FIXER.getDisplayName());
         when(exchangeRatesClient.getProviderName()).thenReturn(ApiProvider.EXCHANGE_RATES.getDisplayName());
         when(currencyApiClient.getProviderName()).thenReturn(ApiProvider.CURRENCY_API.getDisplayName());
-        when(mockClient.getProviderName()).thenReturn(ApiProvider.MOCK.getDisplayName());
+        when(mockClient.getProviderName()).thenReturn(ApiProvider.MOCK_SERVICE_1.getDisplayName());
 
         List<ExchangeRateClient> clients = List.of(fixerClient, exchangeRatesClient, currencyApiClient, mockClient);
         providerService = new ExchangeRateProviderService(clients);
@@ -61,13 +61,13 @@ class ExchangeRateProviderServiceUnitTest {
     @Test
     void getLatestRatesFromProviders_WithAllProvidersSuccess_ShouldReturnMedianRates() {
         CurrencyExchangeResponse response1 = CurrencyExchangeResponse.success(
-                EUR, TEST_DATE, Map.of(USD, BigDecimal.valueOf(1.17))
+                EUR, TEST_DATE, Map.of(USD, new BigDecimal("1.17")), false
         );
         CurrencyExchangeResponse response2 = CurrencyExchangeResponse.success(
-                EUR, TEST_DATE, Map.of(USD, BigDecimal.valueOf(1.18))
+                EUR, TEST_DATE, Map.of(USD, new BigDecimal("1.18")), false
         );
         CurrencyExchangeResponse response3 = CurrencyExchangeResponse.success(
-                EUR, TEST_DATE, Map.of(USD, BigDecimal.valueOf(1.19))
+                EUR, TEST_DATE, Map.of(USD, new BigDecimal("1.19")), false
         );
 
         when(fixerClient.getLatestRates()).thenReturn(response1);
@@ -78,17 +78,19 @@ class ExchangeRateProviderServiceUnitTest {
 
         assertThat(result.success()).isTrue();
         assertThat(result.base()).isEqualTo(EUR);
-        assertThat(result.rates()).containsEntry(USD, BigDecimal.valueOf(1.18));
+        assertThat(result.rates()).containsEntry(USD, new BigDecimal("1.18"));
+        assertThat(result.isMockData()).isFalse();
+
         verify(mockClient, never()).getLatestRates();
     }
 
     @Test
     void getLatestRatesFromProviders_WithOneProviderFail_ShouldUseOthers() {
         CurrencyExchangeResponse response1 = CurrencyExchangeResponse.success(
-                EUR, TEST_DATE, Map.of(USD, BigDecimal.valueOf(1.17))
+                EUR, TEST_DATE, Map.of(USD, new BigDecimal("1.17")), false
         );
         CurrencyExchangeResponse response2 = CurrencyExchangeResponse.success(
-                EUR, TEST_DATE, Map.of(USD, BigDecimal.valueOf(1.19))
+                EUR, TEST_DATE, Map.of(USD, new BigDecimal("1.19")), false
         );
 
         when(fixerClient.getLatestRates()).thenThrow(new RuntimeException("Fixer failed"));
@@ -100,12 +102,15 @@ class ExchangeRateProviderServiceUnitTest {
         assertThat(result.success()).isTrue();
         assertThat(result.base()).isEqualTo(EUR);
         assertThat(result.rates().get(USD)).isEqualByComparingTo(new BigDecimal("1.18"));
+        assertThat(result.isMockData()).isFalse();
+
+        verify(mockClient, never()).getLatestRates();
     }
 
     @Test
     void getLatestRatesFromProviders_WithUnsuccessfulResponse_ShouldIgnoreIt() {
         CurrencyExchangeResponse successResponse = CurrencyExchangeResponse.success(
-                EUR, TEST_DATE, Map.of(USD, BigDecimal.valueOf(1.18))
+                EUR, TEST_DATE, Map.of(USD, new BigDecimal("1.18")), false
         );
         CurrencyExchangeResponse failureResponse = CurrencyExchangeResponse.failure();
 
@@ -117,23 +122,27 @@ class ExchangeRateProviderServiceUnitTest {
 
         assertThat(result.success()).isTrue();
         assertThat(result.rates().get(USD)).isEqualByComparingTo(new BigDecimal("1.18"));
+        assertThat(result.isMockData()).isFalse();
     }
 
     @Test
     void getLatestRatesFromProviders_WithAllProvidersFail_ShouldUseMock() {
         CurrencyExchangeResponse mockResponse = CurrencyExchangeResponse.success(
-                EUR, TEST_DATE, Map.of(USD, BigDecimal.valueOf(1.20))
+                EUR, TEST_DATE, Map.of(USD, new BigDecimal("1.20")), false
         );
 
         when(fixerClient.getLatestRates()).thenThrow(new RuntimeException("Failed"));
         when(exchangeRatesClient.getLatestRates()).thenThrow(new RuntimeException("Failed"));
         when(currencyApiClient.getLatestRates()).thenThrow(new RuntimeException("Failed"));
+
         when(mockClient.getLatestRates()).thenReturn(mockResponse);
 
         CurrencyExchangeResponse result = providerService.getLatestRatesFromProviders();
 
         assertThat(result.success()).isTrue();
-        assertThat(result.rates()).containsEntry(USD, BigDecimal.valueOf(1.20));
+        assertThat(result.rates()).containsEntry(USD, new BigDecimal("1.20"));
+        assertThat(result.isMockData()).isTrue();
+
         verify(mockClient).getLatestRates();
     }
 
@@ -141,7 +150,7 @@ class ExchangeRateProviderServiceUnitTest {
     void getLatestRatesFromProviders_WithSymbols_ShouldCallCorrectMethod() {
         String symbols = "USD,GBP";
         CurrencyExchangeResponse response = CurrencyExchangeResponse.success(
-                EUR, TEST_DATE, Map.of(USD, BigDecimal.valueOf(1.18))
+                EUR, TEST_DATE, Map.of(USD, new BigDecimal("1.18")), false
         );
 
         when(fixerClient.getLatestRates(symbols)).thenReturn(response);
@@ -151,15 +160,17 @@ class ExchangeRateProviderServiceUnitTest {
         CurrencyExchangeResponse result = providerService.getLatestRatesFromProviders(symbols);
 
         assertThat(result.success()).isTrue();
+        assertThat(result.isMockData()).isFalse();
         verify(fixerClient).getLatestRates(symbols);
         verify(exchangeRatesClient).getLatestRates(symbols);
         verify(currencyApiClient).getLatestRates(symbols);
+        verify(mockClient, never()).getLatestRates(any(String.class));
     }
 
     @Test
     void getLatestRatesFromProviders_WithNullSymbols_ShouldCallDefaultMethod() {
         CurrencyExchangeResponse response = CurrencyExchangeResponse.success(
-                EUR, TEST_DATE, Map.of(USD, BigDecimal.valueOf(1.18))
+                EUR, TEST_DATE, Map.of(USD, new BigDecimal("1.18")), false
         );
 
         when(fixerClient.getLatestRates()).thenReturn(response);
@@ -169,6 +180,7 @@ class ExchangeRateProviderServiceUnitTest {
         CurrencyExchangeResponse result = providerService.getLatestRatesFromProviders(null);
 
         assertThat(result.success()).isTrue();
+        assertThat(result.isMockData()).isFalse();
         verify(fixerClient).getLatestRates();
         verify(fixerClient, never()).getLatestRates(any(String.class));
     }
@@ -176,10 +188,10 @@ class ExchangeRateProviderServiceUnitTest {
     @Test
     void getLatestRatesFromProviders_WithMixedFailures_ShouldReturnMedianFromSuccessful() {
         CurrencyExchangeResponse response1 = CurrencyExchangeResponse.success(
-                EUR, TEST_DATE, Map.of(USD, BigDecimal.valueOf(1.17))
+                EUR, TEST_DATE, Map.of(USD, new BigDecimal("1.17")), false
         );
         CurrencyExchangeResponse response2 = CurrencyExchangeResponse.success(
-                EUR, TEST_DATE, Map.of(USD, BigDecimal.valueOf(1.19))
+                EUR, TEST_DATE, Map.of(USD, new BigDecimal("1.19")), false
         );
 
         when(fixerClient.getLatestRates()).thenReturn(response1);
@@ -190,21 +202,22 @@ class ExchangeRateProviderServiceUnitTest {
 
         assertThat(result.success()).isTrue();
         assertThat(result.rates().get(USD)).isEqualByComparingTo(new BigDecimal("1.18"));
+        assertThat(result.isMockData()).isFalse();
     }
 
     @Test
     void getLatestRatesFromProviders_WithMultipleCurrencies_ShouldSelectMedianForEach() {
         CurrencyExchangeResponse response1 = CurrencyExchangeResponse.success(
                 EUR, TEST_DATE,
-                Map.of(USD, BigDecimal.valueOf(1.17), GBP, BigDecimal.valueOf(0.86))
+                Map.of(USD, new BigDecimal("1.17"), GBP, new BigDecimal("0.86")), false
         );
         CurrencyExchangeResponse response2 = CurrencyExchangeResponse.success(
                 EUR, TEST_DATE,
-                Map.of(USD, BigDecimal.valueOf(1.18), GBP, BigDecimal.valueOf(0.87))
+                Map.of(USD, new BigDecimal("1.18"), GBP, new BigDecimal("0.87")), false
         );
         CurrencyExchangeResponse response3 = CurrencyExchangeResponse.success(
                 EUR, TEST_DATE,
-                Map.of(USD, BigDecimal.valueOf(1.19), GBP, BigDecimal.valueOf(0.88))
+                Map.of(USD, new BigDecimal("1.19"), GBP, new BigDecimal("0.88")), false
         );
 
         when(fixerClient.getLatestRates()).thenReturn(response1);
@@ -214,8 +227,9 @@ class ExchangeRateProviderServiceUnitTest {
         CurrencyExchangeResponse result = providerService.getLatestRatesFromProviders();
 
         assertThat(result.success()).isTrue();
-        assertThat(result.rates()).containsEntry(USD, BigDecimal.valueOf(1.18));
-        assertThat(result.rates()).containsEntry(GBP, BigDecimal.valueOf(0.87));
+        assertThat(result.rates()).containsEntry(USD, new BigDecimal("1.18"));
+        assertThat(result.rates()).containsEntry(GBP, new BigDecimal("0.87"));
+        assertThat(result.isMockData()).isFalse();
     }
 
     @Test
@@ -227,5 +241,64 @@ class ExchangeRateProviderServiceUnitTest {
 
         assertThatThrownBy(() -> providerService.getLatestRatesFromProviders())
                 .isInstanceOf(AllProvidersFailedException.class);
+
+        verify(mockClient).getLatestRates();
+    }
+
+    @Test
+    void getLatestRatesFromProviders_WithTwoProviders_ShouldCalculateMedianCorrectly() {
+        CurrencyExchangeResponse response1 = CurrencyExchangeResponse.success(
+                EUR, TEST_DATE, Map.of(USD, new BigDecimal("1.10")), false
+        );
+        CurrencyExchangeResponse response2 = CurrencyExchangeResponse.success(
+                EUR, TEST_DATE, Map.of(USD, new BigDecimal("1.20")), false
+        );
+
+        when(fixerClient.getLatestRates()).thenReturn(response1);
+        when(exchangeRatesClient.getLatestRates()).thenReturn(response2);
+        when(currencyApiClient.getLatestRates()).thenThrow(new RuntimeException("Failed"));
+
+        CurrencyExchangeResponse result = providerService.getLatestRatesFromProviders();
+
+        assertThat(result.success()).isTrue();
+        assertThat(result.rates().get(USD)).isEqualByComparingTo(new BigDecimal("1.15"));
+        assertThat(result.isMockData()).isFalse();
+    }
+
+    @Test
+    void getLatestRatesFromProviders_WithSingleProvider_ShouldReturnDirectly() {
+        CurrencyExchangeResponse response = CurrencyExchangeResponse.success(
+                EUR, TEST_DATE, Map.of(USD, new BigDecimal("1.18")), false
+        );
+
+        when(fixerClient.getLatestRates()).thenReturn(response);
+        when(exchangeRatesClient.getLatestRates()).thenThrow(new RuntimeException("Failed"));
+        when(currencyApiClient.getLatestRates()).thenThrow(new RuntimeException("Failed"));
+
+        CurrencyExchangeResponse result = providerService.getLatestRatesFromProviders();
+
+        assertThat(result.success()).isTrue();
+        assertThat(result.rates().get(USD)).isEqualByComparingTo(new BigDecimal("1.18"));
+        assertThat(result.isMockData()).isFalse();
+    }
+
+    @Test
+    void getLatestRatesFromProviders_WithEmptyRatesResponse_ShouldIgnoreIt() {
+        CurrencyExchangeResponse validResponse = CurrencyExchangeResponse.success(
+                EUR, TEST_DATE, Map.of(USD, new BigDecimal("1.18")), false
+        );
+        CurrencyExchangeResponse emptyResponse = CurrencyExchangeResponse.success(
+                EUR, TEST_DATE, Map.of(), false
+        );
+
+        when(fixerClient.getLatestRates()).thenReturn(emptyResponse);
+        when(exchangeRatesClient.getLatestRates()).thenReturn(validResponse);
+        when(currencyApiClient.getLatestRates()).thenReturn(validResponse);
+
+        CurrencyExchangeResponse result = providerService.getLatestRatesFromProviders();
+
+        assertThat(result.success()).isTrue();
+        assertThat(result.rates().get(USD)).isEqualByComparingTo(new BigDecimal("1.18"));
+        assertThat(result.isMockData()).isFalse();
     }
 }

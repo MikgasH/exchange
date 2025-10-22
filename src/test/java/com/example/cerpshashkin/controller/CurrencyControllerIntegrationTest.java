@@ -11,7 +11,6 @@ import org.springframework.web.client.RestClient;
 import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
 import static com.github.tomakehurst.wiremock.client.WireMock.get;
 import static com.github.tomakehurst.wiremock.client.WireMock.stubFor;
-import static com.github.tomakehurst.wiremock.client.WireMock.urlEqualTo;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlPathMatching;
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -38,7 +37,7 @@ class CurrencyControllerIntegrationTest extends BaseWireMockTest {
                 .body(String.class);
 
         assertThat(response)
-                .contains("USD", "EUR", "GBP");
+                .contains("USD", "EUR", "GBP", "JPY", "CHF", "CAD", "AUD", "CNY", "SEK", "NZD");
     }
 
     @Test
@@ -85,39 +84,6 @@ class CurrencyControllerIntegrationTest extends BaseWireMockTest {
     }
 
     @Test
-    void deleteCurrency_WithExistingCurrency_ShouldReturnSuccess() {
-        restClient.post()
-                .uri("?currency=SEK")
-                .retrieve()
-                .toBodilessEntity();
-
-        restClient.delete()
-                .uri("/SEK")
-                .retrieve()
-                .toBodilessEntity();
-
-        final String response = restClient.get()
-                .retrieve()
-                .body(String.class);
-
-        assertThat(response).doesNotContain("SEK");
-    }
-
-    @Test
-    void deleteCurrency_WithNonExistentCurrency_ShouldReturnBadRequest() {
-        restClient.delete()
-                .uri("/NONEXISTENT")
-                .retrieve()
-                .onStatus(status -> status.value() == 400, (request, httpResponse) -> {
-                    String body = new String(httpResponse.getBody().readAllBytes());
-                    assertThat(body)
-                            .contains("Validation error")
-                            .contains("Invalid currency code");
-                })
-                .toBodilessEntity();
-    }
-
-    @Test
     void exchangeRates_WithSameCurrencies_ShouldReturnSameAmount() {
         final String response = restClient.get()
                 .uri("/exchange-rates?amount=100&from=USD&to=USD")
@@ -127,13 +93,18 @@ class CurrencyControllerIntegrationTest extends BaseWireMockTest {
         assertThat(response)
                 .contains("\"success\":true")
                 .contains("\"convertedAmount\":100")
-                .contains("\"exchangeRate\":1")
-                .contains("\"provider\":\"Same Currency\"");
+                .contains("\"exchangeRate\":1");
     }
 
     @Test
     void exchangeRates_WithValidCurrencies_AndMockProvider_ShouldReturnConversion() {
-        stubAllProvidersToFail();
+        wireMockServer.resetAll();
+
+        stubFor(get(urlPathMatching("/latest.*"))
+                .willReturn(aResponse().withStatus(500)));
+
+        setupMockService1Stub();
+        setupMockService2Stub();
 
         final String response = restClient.get()
                 .uri("/exchange-rates?amount=100&from=USD&to=EUR")
@@ -149,12 +120,6 @@ class CurrencyControllerIntegrationTest extends BaseWireMockTest {
 
     @Test
     void exchangeRates_WithSuccessfulExternalProvider_ShouldReturnConversion() {
-        stubFor(get(urlEqualTo("/latest?access_key=test-fixer-key"))
-                .willReturn(aResponse()
-                        .withStatus(200)
-                        .withHeader("Content-Type", "application/json")
-                        .withBody(readJsonFile("fixer-exchangerates-success-response.json"))));
-
         final String response = restClient.get()
                 .uri("/exchange-rates?amount=100&from=EUR&to=USD")
                 .retrieve()
@@ -163,6 +128,20 @@ class CurrencyControllerIntegrationTest extends BaseWireMockTest {
         assertThat(response)
                 .contains("\"success\":true")
                 .contains("\"originalAmount\":100");
+    }
+
+    @Test
+    void exchangeRates_WithUnsupportedFromCurrency_ShouldReturnBadRequest() {
+        restClient.get()
+                .uri("/exchange-rates?amount=100&from=INVALID&to=EUR")
+                .retrieve()
+                .onStatus(status -> status.value() == 400, (request, httpResponse) -> {
+                    String body = new String(httpResponse.getBody().readAllBytes());
+                    assertThat(body)
+                            .contains("Validation error")
+                            .contains("Invalid source currency code");
+                })
+                .toBodilessEntity();
     }
 
     @Test
@@ -217,7 +196,13 @@ class CurrencyControllerIntegrationTest extends BaseWireMockTest {
 
     @Test
     void refreshRates_WithMockProvider_ShouldReturnSuccess() {
-        stubAllProvidersToFail();
+        wireMockServer.resetAll();
+
+        stubFor(get(urlPathMatching("/latest.*"))
+                .willReturn(aResponse().withStatus(500)));
+
+        setupMockService1Stub();
+        setupMockService2Stub();
 
         final String response = restClient.post()
                 .uri("/refresh")
@@ -229,12 +214,6 @@ class CurrencyControllerIntegrationTest extends BaseWireMockTest {
 
     @Test
     void refreshRates_WithSuccessfulExternalProvider_ShouldReturnSuccess() {
-        stubFor(get(urlEqualTo("/latest?access_key=test-fixer-key"))
-                .willReturn(aResponse()
-                        .withStatus(200)
-                        .withHeader("Content-Type", "application/json")
-                        .withBody(readJsonFile("fixer-exchangerates-success-response.json"))));
-
         final String response = restClient.post()
                 .uri("/refresh")
                 .retrieve()
@@ -245,32 +224,28 @@ class CurrencyControllerIntegrationTest extends BaseWireMockTest {
 
     @Test
     void fullWorkflow_AddConvertRefreshDelete_ShouldWorkCorrectly() {
-        stubAllProvidersToFail();
+        wireMockServer.resetAll();
+
+        stubFor(get(urlPathMatching("/latest.*"))
+                .willReturn(aResponse().withStatus(500)));
+
+        setupMockService1Stub();
+        setupMockService2Stub();
 
         String response = restClient.get().retrieve().body(String.class);
         assertThat(response).contains("USD", "EUR", "GBP");
 
-        restClient.post().uri("?currency=JPY").retrieve().toBodilessEntity();
+        restClient.post().uri("?currency=SEK").retrieve().toBodilessEntity();
 
         response = restClient.get().retrieve().body(String.class);
-        assertThat(response).contains("JPY");
+        assertThat(response).contains("SEK");
 
         restClient.post().uri("/refresh").retrieve().toBodilessEntity();
 
         response = restClient.get()
-                .uri("/exchange-rates?amount=100&from=USD&to=JPY")
+                .uri("/exchange-rates?amount=100&from=EUR&to=SEK")
                 .retrieve()
                 .body(String.class);
         assertThat(response).contains("\"success\":true");
-
-        restClient.delete().uri("/JPY").retrieve().toBodilessEntity();
-
-        response = restClient.get().retrieve().body(String.class);
-        assertThat(response).doesNotContain("JPY");
-    }
-
-    private void stubAllProvidersToFail() {
-        stubFor(get(urlPathMatching("/latest.*"))
-                .willReturn(aResponse().withStatus(500)));
     }
 }

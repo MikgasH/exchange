@@ -1,13 +1,13 @@
-package com.example.cerpshashkin;
+package com.example.mockservice1;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
 
 @SpringBootTest
-class CerpsHashkinApplicationTests {
+class MockService1ApplicationTests {
 
-	@Test
-	void contextLoads() {
-	}
+    @Test
+    void contextLoads() {
+    }
 
 }

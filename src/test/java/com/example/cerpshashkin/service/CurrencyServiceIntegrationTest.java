@@ -1,12 +1,16 @@
 package com.example.cerpshashkin.service;
 
+import com.example.cerpshashkin.BaseWireMockTest;
 import com.example.cerpshashkin.dto.ConversionRequest;
 import com.example.cerpshashkin.dto.ConversionResponse;
+import com.example.cerpshashkin.exception.CurrencyNotSupportedException;
 import com.example.cerpshashkin.exception.InvalidCurrencyException;
+import com.example.cerpshashkin.repository.SupportedCurrencyRepository;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 
@@ -15,7 +19,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @SpringBootTest
 @ActiveProfiles("test")
-class CurrencyServiceIntegrationTest {
+@Transactional
+class CurrencyServiceIntegrationTest extends BaseWireMockTest {
 
     @Autowired
     private CurrencyService currencyService;
@@ -23,26 +28,37 @@ class CurrencyServiceIntegrationTest {
     @Autowired
     private ExchangeRateService exchangeRateService;
 
+    @Autowired
+    private SupportedCurrencyRepository supportedCurrencyRepository;
+
     @Test
     void getSupportedCurrencies_ShouldReturnInitialCurrencies() {
         assertThat(currencyService.getSupportedCurrencies())
-                .containsExactlyInAnyOrder("USD", "EUR", "GBP")
+                .contains("USD", "EUR", "GBP", "JPY", "CHF", "CAD", "AUD", "CNY", "SEK", "NZD")
                 .isSorted();
     }
 
     @Test
-    void addAndRemoveCurrency_ShouldWorkCorrectly() {
-        currencyService.addCurrency("NOK");
+    void addCurrency_WithValidCurrency_ShouldPersistToDatabase() {
+        String currency = "NOK";
 
-        assertThat(currencyService.getSupportedCurrencies())
-                .contains("NOK")
-                .hasSize(4);
+        currencyService.addCurrency(currency);
 
-        currencyService.removeCurrency("NOK");
+        assertThat(supportedCurrencyRepository.existsByCurrencyCode("NOK")).isTrue();
+        assertThat(currencyService.getSupportedCurrencies()).contains("NOK");
+    }
 
-        assertThat(currencyService.getSupportedCurrencies())
-                .doesNotContain("NOK")
-                .hasSize(3);
+    @Test
+    void addCurrency_WithDuplicate_ShouldNotCreateDuplicate() {
+        String currency = "DKK";
+
+        currencyService.addCurrency(currency);
+        int countAfterFirst = currencyService.getSupportedCurrencies().size();
+
+        currencyService.addCurrency(currency);
+        int countAfterSecond = currencyService.getSupportedCurrencies().size();
+
+        assertThat(countAfterFirst).isEqualTo(countAfterSecond);
     }
 
     @Test
@@ -66,19 +82,17 @@ class CurrencyServiceIntegrationTest {
                 .extracting(
                         ConversionResponse::success,
                         ConversionResponse::convertedAmount,
-                        ConversionResponse::exchangeRate,
-                        ConversionResponse::provider
+                        ConversionResponse::exchangeRate
                 )
                 .containsExactly(
                         true,
                         BigDecimal.valueOf(100),
-                        BigDecimal.ONE,
-                        "Same Currency"
+                        BigDecimal.ONE
                 );
     }
 
     @Test
-    void convertCurrency_WithMockProvider_ShouldReturnConversion() {
+    void convertCurrency_WithSupportedCurrencies_ShouldReturnConversion() {
         ConversionRequest request = ConversionRequest.builder()
                 .amount(BigDecimal.valueOf(100))
                 .from("USD")
@@ -99,35 +113,22 @@ class CurrencyServiceIntegrationTest {
     }
 
     @Test
+    void validateSupportedCurrencies_WithBothSupported_ShouldNotThrow() {
+        currencyService.validateSupportedCurrencies("USD", "EUR");
+    }
+
+    @Test
+    void validateSupportedCurrencies_WithUnsupportedCurrency_ShouldThrow() {
+        assertThatThrownBy(() -> currencyService.validateSupportedCurrencies("USD", "ZZZ"))
+                .isInstanceOf(CurrencyNotSupportedException.class)
+                .hasMessageContaining("Currency 'ZZZ' is not supported");
+    }
+
+    @Test
     void refreshExchangeRates_WithMockProvider_ShouldSucceed() {
         currencyService.refreshExchangeRates();
 
         assertThat(currencyService.getSupportedCurrencies()).isNotEmpty();
-    }
-
-    @Test
-    void fullWorkflow_AddConvertRefresh_ShouldWorkCorrectly() {
-        assertThat(currencyService.getSupportedCurrencies()).hasSize(3);
-
-        currencyService.addCurrency("JPY");
-        assertThat(currencyService.getSupportedCurrencies()).hasSize(4);
-
-        ConversionRequest request = ConversionRequest.builder()
-                .amount(BigDecimal.valueOf(1000))
-                .from("USD")
-                .to("JPY")
-                .build();
-
-        ConversionResponse result = currencyService.convertCurrency(request);
-        assertThat(result.success()).isTrue();
-
-        currencyService.refreshExchangeRates();
-
-        ConversionResponse result2 = currencyService.convertCurrency(request);
-        assertThat(result2.success()).isTrue();
-
-        currencyService.removeCurrency("JPY");
-        assertThat(currencyService.getSupportedCurrencies()).hasSize(3);
     }
 
     @Test
@@ -158,5 +159,27 @@ class CurrencyServiceIntegrationTest {
         exchangeRateService.refreshRates();
 
         assertThat(exchangeRateService.getLatestRates().success()).isTrue();
+    }
+
+    @Test
+    void addCurrency_AndConvert_ShouldWorkEndToEnd() {
+        String newCurrency = "CNY";
+        currencyService.addCurrency(newCurrency);
+
+        assertThat(currencyService.getSupportedCurrencies()).contains("CNY");
+
+        exchangeRateService.refreshRates();
+
+        ConversionRequest request = ConversionRequest.builder()
+                .amount(BigDecimal.valueOf(100))
+                .from("EUR")
+                .to("CNY")
+                .build();
+
+        ConversionResponse result = currencyService.convertCurrency(request);
+
+        assertThat(result.success()).isTrue();
+        assertThat(result.fromCurrency()).isEqualTo("EUR");
+        assertThat(result.toCurrency()).isEqualTo("CNY");
     }
 }

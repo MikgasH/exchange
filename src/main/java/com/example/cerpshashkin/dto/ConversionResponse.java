@@ -10,14 +10,23 @@ public record ConversionResponse(
         String toCurrency,
         BigDecimal convertedAmount,
         BigDecimal exchangeRate,
-        Instant timestamp,
-        String provider
+        Instant timestamp
 ) {
-    public static ConversionResponse success(final BigDecimal originalAmount, final String from, final String to,
-                                             final BigDecimal convertedAmount, final BigDecimal rate, final String provider) {
+    public static ConversionResponse success(
+            final BigDecimal originalAmount,
+            final String from,
+            final String to,
+            final BigDecimal convertedAmount,
+            final BigDecimal rate
+    ) {
         return new ConversionResponse(
-                true, originalAmount, from, to, convertedAmount, rate, Instant.now(), provider
+                true,
+                originalAmount,
+                from,
+                to,
+                convertedAmount,
+                rate,
+                Instant.now()
         );
     }
-
 }
