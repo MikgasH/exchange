@@ -7,8 +7,10 @@ import java.util.regex.Pattern;
 
 public class PeriodValidator implements ConstraintValidator<ValidPeriod, String> {
 
-    private static final Pattern PERIOD_PATTERN = Pattern.compile("^\\d+[HDMY]$");
+    private static final Pattern PERIOD_PATTERN = Pattern.compile("^\\d{1,9}[HDMY]$");
+
     private static final int MIN_HOURS = 12;
+    private static final int MAX_HOURS = 8760;
     private static final int MAX_DAYS = 365;
     private static final int MAX_MONTHS = 12;
     private static final int MAX_YEARS = 1;
@@ -25,19 +27,22 @@ public class PeriodValidator implements ConstraintValidator<ValidPeriod, String>
             return false;
         }
 
-        final int amount = Integer.parseInt(trimmed.substring(0, trimmed.length() - 1));
-        final char unit = trimmed.charAt(trimmed.length() - 1);
+        try {
+            final int amount = Integer.parseInt(trimmed.substring(0, trimmed.length() - 1));
 
-        if (amount <= 0) {
+            if (amount <= 0) {
+                return false;
+            }
+
+            return switch (trimmed.charAt(trimmed.length() - 1)) {
+                case 'H' -> amount >= MIN_HOURS && amount <= MAX_HOURS;
+                case 'D' -> amount <= MAX_DAYS;
+                case 'M' -> amount <= MAX_MONTHS;
+                case 'Y' -> amount == MAX_YEARS;
+                default -> false;
+            };
+        } catch (NumberFormatException e) {
             return false;
         }
-
-        return switch (unit) {
-            case 'H' -> amount >= MIN_HOURS && amount <= 24 * MAX_DAYS;
-            case 'D' -> amount <= MAX_DAYS;
-            case 'M' -> amount <= MAX_MONTHS;
-            case 'Y' -> amount == MAX_YEARS;
-            default -> false;
-        };
     }
 }

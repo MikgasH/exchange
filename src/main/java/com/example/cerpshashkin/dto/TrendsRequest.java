@@ -15,7 +15,7 @@ public record TrendsRequest(
         @NotBlank(message = "Target currency is required")
         String to,
 
-        @ValidPeriod(message = "Invalid period format. Use format like: 12H, 10D, 3M, 1Y")
+        @ValidPeriod(message = "Invalid period. Min: 12H/1D/1M/1Y, Max: 8760H/365D/12M/1Y. Examples: 12H, 7D, 3M, 1Y")
         @NotBlank(message = "Period is required")
         String period
 ) {}

@@ -53,7 +53,7 @@ public class ExchangeRateProviderService {
 
         if (!realProviderResponses.isEmpty()) {
             log.info(COLLECTED_RATES_MESSAGE, realProviderResponses.size());
-            return aggregateRates(realProviderResponses, false);  // false = real data
+            return aggregateRates(realProviderResponses, false);
         }
 
         log.warn(USING_FALLBACK_MESSAGE);
