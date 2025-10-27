@@ -28,13 +28,13 @@ scheduling:
 
 api:
   fixer:
-    url: https://data.fixer.io/api
+    url: https://data.fixer.io/api1
     access-key: ${FIXER_API_KEY}
   exchangerates:
-    url: https://api.exchangeratesapi.io/v1
+    url: https://api.exchangeratesapi.io/v11
     access-key: ${EXCHANGERATES_API_KEY}
   currencyapi:
-    url: https://api.currencyapi.com/v3
+    url: https://api.currencyapi.com/v31
     access-key: ${CURRENCYAPI_KEY}
   mock1:
     url: ${MOCK_SERVICE_1_URL:http://localhost:8081}

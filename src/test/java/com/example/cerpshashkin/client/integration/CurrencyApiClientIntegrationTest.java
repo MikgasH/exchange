@@ -40,22 +40,6 @@ class CurrencyApiClientIntegrationTest extends BaseWireMockTest {
     }
 
     @Test
-    void getLatestRates_WithSymbols_ShouldReturnFilteredResponse() {
-        String symbols = "EUR,GBP";
-        stubFor(get(urlEqualTo("/latest?apikey=test-currencyapi-key&currencies=EUR,GBP"))
-                .willReturn(aResponse()
-                        .withStatus(200)
-                        .withHeader("Content-Type", "application/json")
-                        .withBody(readJsonFile("currencyapi-filtered-response.json"))));
-
-        CurrencyExchangeResponse result = currencyApiClient.getLatestRates(symbols);
-
-        assertThat(result).isNotNull();
-        assertThat(result.success()).isTrue();
-        assertThat(result.rates()).hasSize(2);
-    }
-
-    @Test
     void getLatestRates_WhenServerReturns500_ShouldThrowException() {
         stubFor(get(urlEqualTo("/latest?apikey=test-currencyapi-key"))
                 .willReturn(aResponse()
@@ -66,5 +50,87 @@ class CurrencyApiClientIntegrationTest extends BaseWireMockTest {
         assertThatThrownBy(() -> currencyApiClient.getLatestRates())
                 .isInstanceOf(ExternalApiException.class)
                 .hasMessageContaining("Failed to fetch latest exchange rates from CurrencyAPI");
+    }
+
+    @Test
+    void getLatestRates_WhenServerReturns404_ShouldThrowException() {
+        stubFor(get(urlEqualTo("/latest?apikey=test-currencyapi-key"))
+                .willReturn(aResponse()
+                        .withStatus(404)
+                        .withHeader("Content-Type", "application/json")
+                        .withBody("{\"error\": \"Not Found\"}")));
+
+        assertThatThrownBy(() -> currencyApiClient.getLatestRates())
+                .isInstanceOf(ExternalApiException.class)
+                .hasMessageContaining("HTTP error: 404");
+    }
+
+    @Test
+    void getLatestRates_WhenServerReturns401_ShouldThrowException() {
+        stubFor(get(urlEqualTo("/latest?apikey=test-currencyapi-key"))
+                .willReturn(aResponse()
+                        .withStatus(401)
+                        .withHeader("Content-Type", "application/json")
+                        .withBody("{\"error\": \"Unauthorized\"}")));
+
+        assertThatThrownBy(() -> currencyApiClient.getLatestRates())
+                .isInstanceOf(ExternalApiException.class)
+                .hasMessageContaining("HTTP error: 401");
+    }
+
+    @Test
+    void getLatestRates_WhenEmptyData_ShouldThrowException() {
+        stubFor(get(urlEqualTo("/latest?apikey=test-currencyapi-key"))
+                .willReturn(aResponse()
+                        .withStatus(200)
+                        .withHeader("Content-Type", "application/json")
+                        .withBody(readJsonFile("currencyapi-empty-response.json"))));
+
+        assertThatThrownBy(() -> currencyApiClient.getLatestRates())
+                .isInstanceOf(ExternalApiException.class)
+                .hasMessageContaining("Empty data received");
+    }
+
+    @Test
+    void getLatestRates_WhenNullData_ShouldThrowException() {
+        stubFor(get(urlEqualTo("/latest?apikey=test-currencyapi-key"))
+                .willReturn(aResponse()
+                        .withStatus(200)
+                        .withHeader("Content-Type", "application/json")
+                        .withBody("{\"meta\": {\"last_updated_at\": \"2023-06-23T10:04:00Z\"}, \"data\": null}")));
+
+        assertThatThrownBy(() -> currencyApiClient.getLatestRates())
+                .isInstanceOf(ExternalApiException.class)
+                .hasMessageContaining("Response data is null");
+    }
+
+    @Test
+    void getLatestRates_WhenInvalidMetaInfo_ShouldThrowException() {
+        stubFor(get(urlEqualTo("/latest?apikey=test-currencyapi-key"))
+                .willReturn(aResponse()
+                        .withStatus(200)
+                        .withHeader("Content-Type", "application/json")
+                        .withBody("{\"meta\": null, \"data\": {\"EUR\": {\"code\": \"EUR\", \"value\": 0.85}}}")));
+
+        assertThatThrownBy(() -> currencyApiClient.getLatestRates())
+                .isInstanceOf(ExternalApiException.class)
+                .hasMessageContaining("Invalid meta information");
+    }
+
+    @Test
+    void getLatestRates_WhenInvalidJson_ShouldThrowException() {
+        stubFor(get(urlEqualTo("/latest?apikey=test-currencyapi-key"))
+                .willReturn(aResponse()
+                        .withStatus(200)
+                        .withHeader("Content-Type", "application/json")
+                        .withBody("{ invalid json")));
+
+        assertThatThrownBy(() -> currencyApiClient.getLatestRates())
+                .isInstanceOf(Exception.class);
+    }
+
+    @Test
+    void getProviderName_ShouldReturnCurrencyAPI() {
+        assertThat(currencyApiClient.getProviderName()).isEqualTo("CurrencyAPI");
     }
 }

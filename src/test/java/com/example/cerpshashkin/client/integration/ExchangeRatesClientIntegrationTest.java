@@ -41,22 +41,6 @@ class ExchangeRatesClientIntegrationTest extends BaseWireMockTest {
     }
 
     @Test
-    void getLatestRates_WithSymbols_ShouldReturnFilteredResponse() {
-        String symbols = "USD,GBP";
-        stubFor(get(urlEqualTo("/latest?access_key=test-exchangerates-key&symbols=USD,GBP"))
-                .willReturn(aResponse()
-                        .withStatus(200)
-                        .withHeader("Content-Type", "application/json")
-                        .withBody(readJsonFile("fixer-exchangerates-filtered-response.json"))));
-
-        CurrencyExchangeResponse result = exchangeRatesClient.getLatestRates(symbols);
-
-        assertThat(result).isNotNull();
-        assertThat(result.success()).isTrue();
-        assertThat(result.rates()).hasSize(2);
-    }
-
-    @Test
     void getLatestRates_WhenServerReturns500_ShouldThrowException() {
         stubFor(get(urlEqualTo("/latest?access_key=test-exchangerates-key"))
                 .willReturn(aResponse()
@@ -67,5 +51,89 @@ class ExchangeRatesClientIntegrationTest extends BaseWireMockTest {
         assertThatThrownBy(() -> exchangeRatesClient.getLatestRates())
                 .isInstanceOf(ExternalApiException.class)
                 .hasMessageContaining("Failed to fetch latest exchange rates from ExchangeRatesAPI");
+    }
+
+    @Test
+    void getLatestRates_WhenServerReturns404_ShouldThrowException() {
+        stubFor(get(urlEqualTo("/latest?access_key=test-exchangerates-key"))
+                .willReturn(aResponse()
+                        .withStatus(404)
+                        .withHeader("Content-Type", "application/json")
+                        .withBody("{\"error\": \"Not Found\"}")));
+
+        assertThatThrownBy(() -> exchangeRatesClient.getLatestRates())
+                .isInstanceOf(ExternalApiException.class)
+                .hasMessageContaining("HTTP error: 404");
+    }
+
+    @Test
+    void getLatestRates_WhenServerReturns401_ShouldThrowException() {
+        stubFor(get(urlEqualTo("/latest?access_key=test-exchangerates-key"))
+                .willReturn(aResponse()
+                        .withStatus(401)
+                        .withHeader("Content-Type", "application/json")
+                        .withBody("{\"error\": \"Unauthorized\"}")));
+
+        assertThatThrownBy(() -> exchangeRatesClient.getLatestRates())
+                .isInstanceOf(ExternalApiException.class)
+                .hasMessageContaining("HTTP error: 401");
+    }
+
+    @Test
+    void getLatestRates_WhenSuccessFalse_ShouldThrowException() {
+        stubFor(get(urlEqualTo("/latest?access_key=test-exchangerates-key"))
+                .willReturn(aResponse()
+                        .withStatus(200)
+                        .withHeader("Content-Type", "application/json")
+                        .withBody("{\"success\": false, \"error\": {\"code\": 101, \"type\": \"invalid_access_key\"}}")));
+
+        assertThatThrownBy(() -> exchangeRatesClient.getLatestRates())
+                .isInstanceOf(ExternalApiException.class)
+                .hasMessageContaining("API returned success=false");
+    }
+
+    @Test
+    void getLatestRates_WhenNullRates_ShouldThrowException() {
+        stubFor(get(urlEqualTo("/latest?access_key=test-exchangerates-key"))
+                .willReturn(aResponse()
+                        .withStatus(200)
+                        .withHeader("Content-Type", "application/json")
+                        .withBody("{\"success\": true, \"timestamp\": 1725459054, \"base\": \"EUR\", \"date\": \"2025-09-04\", \"rates\": null}")));
+
+        assertThatThrownBy(() -> exchangeRatesClient.getLatestRates())
+                .isInstanceOf(ExternalApiException.class)
+                .hasMessageContaining("Empty rates received");
+    }
+
+    @Test
+    void getLatestRates_WhenInvalidJson_ShouldThrowException() {
+        stubFor(get(urlEqualTo("/latest?access_key=test-exchangerates-key"))
+                .willReturn(aResponse()
+                        .withStatus(200)
+                        .withHeader("Content-Type", "application/json")
+                        .withBody("{ invalid json")));
+
+        assertThatThrownBy(() -> exchangeRatesClient.getLatestRates())
+                .isInstanceOf(Exception.class);
+    }
+
+    @Test
+    void getLatestRates_WhenEmptyRates_ShouldReturnEmptyMap() {
+        stubFor(get(urlEqualTo("/latest?access_key=test-exchangerates-key"))
+                .willReturn(aResponse()
+                        .withStatus(200)
+                        .withHeader("Content-Type", "application/json")
+                        .withBody("{\"success\": true, \"timestamp\": 1725459054, \"base\": \"EUR\", \"date\": \"2025-09-04\", \"rates\": {}}")));
+
+        CurrencyExchangeResponse result = exchangeRatesClient.getLatestRates();
+
+        assertThat(result).isNotNull();
+        assertThat(result.success()).isTrue();
+        assertThat(result.rates()).isEmpty();
+    }
+
+    @Test
+    void getProviderName_ShouldReturnExchangeRatesAPI() {
+        assertThat(exchangeRatesClient.getProviderName()).isEqualTo("ExchangeRatesAPI");
     }
 }

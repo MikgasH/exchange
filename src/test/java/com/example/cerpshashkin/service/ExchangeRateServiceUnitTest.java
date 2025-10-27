@@ -197,6 +197,13 @@ class ExchangeRateServiceUnitTest {
 
     @Test
     void refreshRates_WithMockData_ShouldOnlyCacheNotSaveToDb() {
+        List<SupportedCurrencyEntity> supported = List.of(
+                createSupportedCurrency("USD"),
+                createSupportedCurrency("GBP")
+        );
+
+        when(supportedCurrencyRepository.findAll()).thenReturn(supported);
+
         CurrencyExchangeResponse mockResponse = CurrencyExchangeResponse.success(
                 EUR, TEST_DATE,
                 Map.of(
@@ -209,11 +216,10 @@ class ExchangeRateServiceUnitTest {
 
         exchangeRateService.refreshRates();
 
+        verify(cache).clearCache();
         verify(cache).putRate(EUR, USD, BigDecimal.valueOf(1.15));
         verify(cache).putRate(EUR, GBP, BigDecimal.valueOf(0.85));
-
         verify(exchangeRateRepository, never()).saveAll(any());
-        verify(cache, never()).clearCache();
     }
 
     @Test
@@ -360,33 +366,6 @@ class ExchangeRateServiceUnitTest {
         assertThat(result.get()).isEqualByComparingTo(expectedCrossRate);
         verifyNoInteractions(providerService);
         verifyNoInteractions(exchangeRateRepository);
-    }
-
-    @Test
-    void getLatestRates_ShouldDelegateToProviderService() {
-        CurrencyExchangeResponse expectedResponse = CurrencyExchangeResponse.success(
-                EUR, TEST_DATE, Map.of(), false
-        );
-        when(providerService.getLatestRatesFromProviders()).thenReturn(expectedResponse);
-
-        CurrencyExchangeResponse result = exchangeRateService.getLatestRates();
-
-        assertThat(result).isEqualTo(expectedResponse);
-        verify(providerService).getLatestRatesFromProviders();
-    }
-
-    @Test
-    void getLatestRates_WithSymbols_ShouldDelegateToProviderService() {
-        String symbols = "EUR,GBP";
-        CurrencyExchangeResponse expectedResponse = CurrencyExchangeResponse.success(
-                EUR, TEST_DATE, Map.of(), false
-        );
-        when(providerService.getLatestRatesFromProviders(symbols)).thenReturn(expectedResponse);
-
-        CurrencyExchangeResponse result = exchangeRateService.getLatestRates(symbols);
-
-        assertThat(result).isEqualTo(expectedResponse);
-        verify(providerService).getLatestRatesFromProviders(symbols);
     }
 
     @Test

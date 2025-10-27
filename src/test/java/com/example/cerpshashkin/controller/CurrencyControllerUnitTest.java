@@ -2,6 +2,8 @@ package com.example.cerpshashkin.controller;
 
 import com.example.cerpshashkin.dto.ConversionRequest;
 import com.example.cerpshashkin.dto.ConversionResponse;
+import com.example.cerpshashkin.dto.TrendsRequest;
+import com.example.cerpshashkin.dto.TrendsResponse;
 import com.example.cerpshashkin.exception.CurrencyNotSupportedException;
 import com.example.cerpshashkin.exception.RateNotAvailableException;
 import com.example.cerpshashkin.service.CurrencyService;
@@ -12,6 +14,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
@@ -244,5 +247,185 @@ class CurrencyControllerUnitTest {
                 .andExpect(content().string("Exchange rates updated successfully"));
 
         verify(currencyService, times(1)).refreshExchangeRates();
+    }
+
+    @Test
+    void getTrends_ShouldReturnTrends_WhenValidParameters() throws Exception {
+        String from = "USD";
+        String to = "EUR";
+        String period = "7D";
+
+        TrendsResponse trendsResponse = TrendsResponse.success(
+                from, to, period,
+                BigDecimal.valueOf(0.85),
+                BigDecimal.valueOf(0.87),
+                BigDecimal.valueOf(2.35),
+                Instant.now().minusSeconds(604800),
+                Instant.now(),
+                168
+        );
+
+        doNothing().when(currencyService).validateSupportedCurrencies(from, to);
+        when(currencyService.getTrends(any(TrendsRequest.class))).thenReturn(trendsResponse);
+
+        mockMvc.perform(get("/api/v1/currencies/trends")
+                        .param("from", from)
+                        .param("to", to)
+                        .param("period", period))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.fromCurrency").value("USD"))
+                .andExpect(jsonPath("$.toCurrency").value("EUR"))
+                .andExpect(jsonPath("$.period").value("7D"))
+                .andExpect(jsonPath("$.oldestRate").value(0.85))
+                .andExpect(jsonPath("$.newestRate").value(0.87))
+                .andExpect(jsonPath("$.changePercentage").value(2.35))
+                .andExpect(jsonPath("$.dataPointsCount").value(168));
+
+        verify(currencyService, times(1)).validateSupportedCurrencies(from, to);
+        verify(currencyService, times(1)).getTrends(any(TrendsRequest.class));
+    }
+
+    @Test
+    void getTrends_ShouldReturnBadRequest_WhenFromCurrencyIsInvalid() throws Exception {
+        mockMvc.perform(get("/api/v1/currencies/trends")
+                        .param("from", "INVALID")
+                        .param("to", "EUR")
+                        .param("period", "7D"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.title").value("Validation error"))
+                .andExpect(jsonPath("$.detail").value("from: Invalid source currency code"));
+
+        verify(currencyService, never()).validateSupportedCurrencies(anyString(), anyString());
+        verify(currencyService, never()).getTrends(any(TrendsRequest.class));
+    }
+
+    @Test
+    void getTrends_ShouldReturnBadRequest_WhenToCurrencyIsInvalid() throws Exception {
+        mockMvc.perform(get("/api/v1/currencies/trends")
+                        .param("from", "USD")
+                        .param("to", "INVALID")
+                        .param("period", "7D"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.title").value("Validation error"))
+                .andExpect(jsonPath("$.detail").value("to: Invalid target currency code"));
+
+        verify(currencyService, never()).validateSupportedCurrencies(anyString(), anyString());
+        verify(currencyService, never()).getTrends(any(TrendsRequest.class));
+    }
+
+    @Test
+    void getTrends_ShouldReturnBadRequest_WhenPeriodIsTooShort() throws Exception {
+        mockMvc.perform(get("/api/v1/currencies/trends")
+                        .param("from", "USD")
+                        .param("to", "EUR")
+                        .param("period", "1H"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.title").value("Validation error"));
+
+        verify(currencyService, never()).validateSupportedCurrencies(anyString(), anyString());
+        verify(currencyService, never()).getTrends(any(TrendsRequest.class));
+    }
+
+    @Test
+    void getTrends_ShouldReturnBadRequest_WhenPeriodIsTooLong() throws Exception {
+        mockMvc.perform(get("/api/v1/currencies/trends")
+                        .param("from", "USD")
+                        .param("to", "EUR")
+                        .param("period", "2Y"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.title").value("Validation error"));
+
+        verify(currencyService, never()).validateSupportedCurrencies(anyString(), anyString());
+        verify(currencyService, never()).getTrends(any(TrendsRequest.class));
+    }
+
+    @Test
+    void getTrends_ShouldReturnBadRequest_WhenFromCurrencyIsMissing() throws Exception {
+        mockMvc.perform(get("/api/v1/currencies/trends")
+                        .param("to", "EUR")
+                        .param("period", "7D"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.title").value("Validation error"));
+
+        verify(currencyService, never()).validateSupportedCurrencies(anyString(), anyString());
+        verify(currencyService, never()).getTrends(any(TrendsRequest.class));
+    }
+
+    @Test
+    void getTrends_ShouldReturnBadRequest_WhenToCurrencyIsMissing() throws Exception {
+        mockMvc.perform(get("/api/v1/currencies/trends")
+                        .param("from", "USD")
+                        .param("period", "7D"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.title").value("Validation error"));
+
+        verify(currencyService, never()).validateSupportedCurrencies(anyString(), anyString());
+        verify(currencyService, never()).getTrends(any(TrendsRequest.class));
+    }
+
+    @Test
+    void getTrends_ShouldReturnBadRequest_WhenPeriodIsMissing() throws Exception {
+        mockMvc.perform(get("/api/v1/currencies/trends")
+                        .param("from", "USD")
+                        .param("to", "EUR"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.title").value("Validation error"));
+
+        verify(currencyService, never()).validateSupportedCurrencies(anyString(), anyString());
+        verify(currencyService, never()).getTrends(any(TrendsRequest.class));
+    }
+
+    @Test
+    void getTrends_ShouldWork_WithDifferentValidPeriods() throws Exception {
+        String from = "EUR";
+        String to = "GBP";
+
+        TrendsResponse response = TrendsResponse.success(
+                from, to, "30D",
+                BigDecimal.valueOf(0.85),
+                BigDecimal.valueOf(0.87),
+                BigDecimal.valueOf(2.35),
+                Instant.now().minusSeconds(2592000),
+                Instant.now(),
+                720
+        );
+
+        doNothing().when(currencyService).validateSupportedCurrencies(anyString(), anyString());
+        when(currencyService.getTrends(any(TrendsRequest.class))).thenReturn(response);
+
+        mockMvc.perform(get("/api/v1/currencies/trends")
+                        .param("from", from)
+                        .param("to", to)
+                        .param("period", "30D"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true));
+
+        mockMvc.perform(get("/api/v1/currencies/trends")
+                        .param("from", from)
+                        .param("to", to)
+                        .param("period", "3M"))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(get("/api/v1/currencies/trends")
+                        .param("from", from)
+                        .param("to", to)
+                        .param("period", "1Y"))
+                .andExpect(status().isOk());
+
+        verify(currencyService, times(3)).getTrends(any(TrendsRequest.class));
+    }
+
+    @Test
+    void getTrends_ShouldReturnBadRequest_WhenBothCurrenciesAreInvalid() throws Exception {
+        mockMvc.perform(get("/api/v1/currencies/trends")
+                        .param("from", "INVALID1")
+                        .param("to", "INVALID2")
+                        .param("period", "7D"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.title").value("Validation error"));
+
+        verify(currencyService, never()).validateSupportedCurrencies(anyString(), anyString());
+        verify(currencyService, never()).getTrends(any(TrendsRequest.class));
     }
 }

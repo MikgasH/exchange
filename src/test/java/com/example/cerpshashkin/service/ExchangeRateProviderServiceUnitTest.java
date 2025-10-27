@@ -147,45 +147,6 @@ class ExchangeRateProviderServiceUnitTest {
     }
 
     @Test
-    void getLatestRatesFromProviders_WithSymbols_ShouldCallCorrectMethod() {
-        String symbols = "USD,GBP";
-        CurrencyExchangeResponse response = CurrencyExchangeResponse.success(
-                EUR, TEST_DATE, Map.of(USD, new BigDecimal("1.18")), false
-        );
-
-        when(fixerClient.getLatestRates(symbols)).thenReturn(response);
-        when(exchangeRatesClient.getLatestRates(symbols)).thenReturn(response);
-        when(currencyApiClient.getLatestRates(symbols)).thenReturn(response);
-
-        CurrencyExchangeResponse result = providerService.getLatestRatesFromProviders(symbols);
-
-        assertThat(result.success()).isTrue();
-        assertThat(result.isMockData()).isFalse();
-        verify(fixerClient).getLatestRates(symbols);
-        verify(exchangeRatesClient).getLatestRates(symbols);
-        verify(currencyApiClient).getLatestRates(symbols);
-        verify(mockClient, never()).getLatestRates(any(String.class));
-    }
-
-    @Test
-    void getLatestRatesFromProviders_WithNullSymbols_ShouldCallDefaultMethod() {
-        CurrencyExchangeResponse response = CurrencyExchangeResponse.success(
-                EUR, TEST_DATE, Map.of(USD, new BigDecimal("1.18")), false
-        );
-
-        when(fixerClient.getLatestRates()).thenReturn(response);
-        when(exchangeRatesClient.getLatestRates()).thenReturn(response);
-        when(currencyApiClient.getLatestRates()).thenReturn(response);
-
-        CurrencyExchangeResponse result = providerService.getLatestRatesFromProviders(null);
-
-        assertThat(result.success()).isTrue();
-        assertThat(result.isMockData()).isFalse();
-        verify(fixerClient).getLatestRates();
-        verify(fixerClient, never()).getLatestRates(any(String.class));
-    }
-
-    @Test
     void getLatestRatesFromProviders_WithMixedFailures_ShouldReturnMedianFromSuccessful() {
         CurrencyExchangeResponse response1 = CurrencyExchangeResponse.success(
                 EUR, TEST_DATE, Map.of(USD, new BigDecimal("1.17")), false

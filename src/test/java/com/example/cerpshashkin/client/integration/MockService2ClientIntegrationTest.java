@@ -1,13 +1,14 @@
 package com.example.cerpshashkin.client.integration;
 
 import com.example.cerpshashkin.BaseWireMockTest;
-import com.example.cerpshashkin.client.impl.FixerioClient;
+import com.example.cerpshashkin.client.impl.MockService2Client;
 import com.example.cerpshashkin.exception.ExternalApiException;
 import com.example.cerpshashkin.model.CurrencyExchangeResponse;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 
 import java.util.Currency;
+
 import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
 import static com.github.tomakehurst.wiremock.client.WireMock.get;
 import static com.github.tomakehurst.wiremock.client.WireMock.stubFor;
@@ -15,24 +16,25 @@ import static com.github.tomakehurst.wiremock.client.WireMock.urlEqualTo;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-class FixerioClientIntegrationTest extends BaseWireMockTest {
+class MockService2ClientIntegrationTest extends BaseWireMockTest {
 
     @Autowired
-    private FixerioClient fixerioClient;
+    private MockService2Client mockService2Client;
 
     @Test
     void getLatestRates_ShouldReturnSuccessfulResponse() {
-        stubFor(get(urlEqualTo("/latest?access_key=test-fixer-key"))
+        stubFor(get(urlEqualTo("/api/rates/latest"))
                 .willReturn(aResponse()
                         .withStatus(200)
                         .withHeader("Content-Type", "application/json")
-                        .withBody(readJsonFile("fixer-exchangerates-success-response.json"))));
+                        .withBody(readJsonFile("mock-service-success-response.json"))));
 
-        CurrencyExchangeResponse result = fixerioClient.getLatestRates();
+        CurrencyExchangeResponse result = mockService2Client.getLatestRates();
 
         assertThat(result).isNotNull();
         assertThat(result.success()).isTrue();
         assertThat(result.base()).isEqualTo(Currency.getInstance("EUR"));
+        assertThat(result.rates()).isNotEmpty();
         assertThat(result.rates()).containsKeys(
                 Currency.getInstance("USD"),
                 Currency.getInstance("GBP"),
@@ -42,90 +44,64 @@ class FixerioClientIntegrationTest extends BaseWireMockTest {
 
     @Test
     void getLatestRates_WhenServerReturns500_ShouldThrowException() {
-        stubFor(get(urlEqualTo("/latest?access_key=test-fixer-key"))
+        stubFor(get(urlEqualTo("/api/rates/latest"))
                 .willReturn(aResponse()
                         .withStatus(500)
                         .withHeader("Content-Type", "application/json")
                         .withBody(readJsonFile("error-response.json"))));
 
-        assertThatThrownBy(() -> fixerioClient.getLatestRates())
+        assertThatThrownBy(() -> mockService2Client.getLatestRates())
                 .isInstanceOf(ExternalApiException.class)
-                .hasMessageContaining("Failed to fetch latest exchange rates from Fixer.io");
+                .hasMessageContaining("Failed to fetch latest exchange rates from MockService2");
     }
 
     @Test
     void getLatestRates_WhenServerReturns404_ShouldThrowException() {
-        stubFor(get(urlEqualTo("/latest?access_key=test-fixer-key"))
+        stubFor(get(urlEqualTo("/api/rates/latest"))
                 .willReturn(aResponse()
                         .withStatus(404)
                         .withHeader("Content-Type", "application/json")
                         .withBody("{\"error\": \"Not Found\"}")));
 
-        assertThatThrownBy(() -> fixerioClient.getLatestRates())
+        assertThatThrownBy(() -> mockService2Client.getLatestRates())
                 .isInstanceOf(ExternalApiException.class)
                 .hasMessageContaining("HTTP error: 404");
     }
 
     @Test
-    void getLatestRates_WhenServerReturns401_ShouldThrowException() {
-        stubFor(get(urlEqualTo("/latest?access_key=test-fixer-key"))
+    void getLatestRates_WhenServerReturns503_ShouldThrowException() {
+        stubFor(get(urlEqualTo("/api/rates/latest"))
                 .willReturn(aResponse()
-                        .withStatus(401)
+                        .withStatus(503)
                         .withHeader("Content-Type", "application/json")
-                        .withBody("{\"error\": \"Unauthorized\"}")));
+                        .withBody("{\"error\": \"Service Unavailable\"}")));
 
-        assertThatThrownBy(() -> fixerioClient.getLatestRates())
+        assertThatThrownBy(() -> mockService2Client.getLatestRates())
                 .isInstanceOf(ExternalApiException.class)
-                .hasMessageContaining("HTTP error: 401");
-    }
-
-    @Test
-    void getLatestRates_WhenSuccessFalse_ShouldThrowException() {
-        stubFor(get(urlEqualTo("/latest?access_key=test-fixer-key"))
-                .willReturn(aResponse()
-                        .withStatus(200)
-                        .withHeader("Content-Type", "application/json")
-                        .withBody("{\"success\": false, \"error\": {\"code\": 101, \"type\": \"invalid_access_key\"}}")));
-
-        assertThatThrownBy(() -> fixerioClient.getLatestRates())
-                .isInstanceOf(ExternalApiException.class)
-                .hasMessageContaining("API returned success=false");
-    }
-
-    @Test
-    void getLatestRates_WhenNullRates_ShouldThrowException() {
-        stubFor(get(urlEqualTo("/latest?access_key=test-fixer-key"))
-                .willReturn(aResponse()
-                        .withStatus(200)
-                        .withHeader("Content-Type", "application/json")
-                        .withBody("{\"success\": true, \"timestamp\": 1725459054, \"base\": \"EUR\", \"date\": \"2025-09-04\", \"rates\": null}")));
-
-        assertThatThrownBy(() -> fixerioClient.getLatestRates())
-                .isInstanceOf(ExternalApiException.class)
-                .hasMessageContaining("Empty rates received");
+                .hasMessageContaining("HTTP error: 503");
     }
 
     @Test
     void getLatestRates_WhenInvalidJson_ShouldThrowException() {
-        stubFor(get(urlEqualTo("/latest?access_key=test-fixer-key"))
+        stubFor(get(urlEqualTo("/api/rates/latest"))
                 .willReturn(aResponse()
                         .withStatus(200)
                         .withHeader("Content-Type", "application/json")
                         .withBody("{ invalid json")));
 
-        assertThatThrownBy(() -> fixerioClient.getLatestRates())
+        assertThatThrownBy(() -> mockService2Client.getLatestRates())
                 .isInstanceOf(Exception.class);
     }
 
     @Test
     void getLatestRates_WhenEmptyRates_ShouldReturnEmptyMap() {
-        stubFor(get(urlEqualTo("/latest?access_key=test-fixer-key"))
+        stubFor(get(urlEqualTo("/api/rates/latest"))
                 .willReturn(aResponse()
                         .withStatus(200)
                         .withHeader("Content-Type", "application/json")
-                        .withBody("{\"success\": true, \"timestamp\": 1725459054, \"base\": \"EUR\", \"date\": \"2025-09-04\", \"rates\": {}}")));
+                        .withBody("{\"success\": true, \"timestamp\": 1729425600, \"base\": \"EUR\", \"date\": \"2025-10-20\", \"rates\": {}}")));
 
-        CurrencyExchangeResponse result = fixerioClient.getLatestRates();
+        CurrencyExchangeResponse result = mockService2Client.getLatestRates();
 
         assertThat(result).isNotNull();
         assertThat(result.success()).isTrue();
@@ -133,7 +109,7 @@ class FixerioClientIntegrationTest extends BaseWireMockTest {
     }
 
     @Test
-    void getProviderName_ShouldReturnFixerio() {
-        assertThat(fixerioClient.getProviderName()).isEqualTo("Fixer.io");
+    void getProviderName_ShouldReturnMockService2() {
+        assertThat(mockService2Client.getProviderName()).isEqualTo("MockService2");
     }
 }

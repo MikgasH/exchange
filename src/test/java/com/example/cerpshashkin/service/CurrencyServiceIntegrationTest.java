@@ -132,36 +132,6 @@ class CurrencyServiceIntegrationTest extends BaseWireMockTest {
     }
 
     @Test
-    void exchangeRateService_GetLatestRates_WithMockProvider_ShouldSucceed() {
-        var result = exchangeRateService.getLatestRates();
-
-        assertThat(result)
-                .satisfies(response -> {
-                    assertThat(response.success()).isTrue();
-                    assertThat(response.base()).isNotNull();
-                    assertThat(response.rates()).isNotNull();
-                });
-    }
-
-    @Test
-    void exchangeRateService_GetLatestRates_WithSymbols_ShouldSucceed() {
-        var result = exchangeRateService.getLatestRates("EUR,GBP");
-
-        assertThat(result)
-                .satisfies(response -> {
-                    assertThat(response.success()).isTrue();
-                    assertThat(response.rates()).isNotNull();
-                });
-    }
-
-    @Test
-    void exchangeRateService_RefreshRates_ShouldClearCacheAndFetchNew() {
-        exchangeRateService.refreshRates();
-
-        assertThat(exchangeRateService.getLatestRates().success()).isTrue();
-    }
-
-    @Test
     void addCurrency_AndConvert_ShouldWorkEndToEnd() {
         String newCurrency = "CNY";
         currencyService.addCurrency(newCurrency);

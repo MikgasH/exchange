@@ -161,7 +161,7 @@ class CurrencyControllerIntegrationTest extends BaseWireMockTest {
     @Test
     void exchangeRates_WithInvalidToCurrency_ShouldReturnBadRequest() {
         restClient.get()
-                .uri("/exchange-rates?amount=100&from=USD&to=XYZ")
+                .uri("/exchange-rates?amount=100&from=USD&to=ZZZZZ")
                 .retrieve()
                 .onStatus(status -> status.value() == 400, (request, httpResponse) -> {
                     String body = new String(httpResponse.getBody().readAllBytes());
@@ -247,5 +247,87 @@ class CurrencyControllerIntegrationTest extends BaseWireMockTest {
                 .retrieve()
                 .body(String.class);
         assertThat(response).contains("\"success\":true");
+    }
+
+    @Test
+    void getTrends_WithValidParameters_ShouldReturnInsufficientDataError() {
+        restClient.get()
+                .uri("/trends?from=USD&to=EUR&period=7D")
+                .retrieve()
+                .onStatus(status -> status.value() == 400, (request, httpResponse) -> {
+                    String body = new String(httpResponse.getBody().readAllBytes());
+                    assertThat(body)
+                            .contains("Insufficient data")
+                            .contains("Found 0 data points, need at least 2");
+                })
+                .toBodilessEntity();
+    }
+
+    @Test
+    void getTrends_WithInvalidToCurrency_ShouldReturnValidationError() {
+        restClient.get()
+                .uri("/trends?from=USD&to=INVALID&period=7D")
+                .retrieve()
+                .onStatus(status -> status.value() == 400, (request, httpResponse) -> {
+                    String body = new String(httpResponse.getBody().readAllBytes());
+                    assertThat(body).contains("Validation error");
+                })
+                .toBodilessEntity();
+    }
+
+    @Test
+    void getTrends_WithInvalidPeriod_ShouldReturnValidationError() {
+        restClient.get()
+                .uri("/trends?from=USD&to=EUR&period=INVALID")
+                .retrieve()
+                .onStatus(status -> status.value() == 400, (request, httpResponse) -> {
+                    String body = new String(httpResponse.getBody().readAllBytes());
+                    assertThat(body).contains("Validation error");
+                })
+                .toBodilessEntity();
+    }
+
+    @Test
+    void getTrends_WithTooShortPeriod_ShouldReturnValidationError() {
+        restClient.get()
+                .uri("/trends?from=USD&to=EUR&period=1H")
+                .retrieve()
+                .onStatus(status -> status.value() == 400, (request, httpResponse) -> {
+                    assertThat(httpResponse.getStatusCode().value()).isEqualTo(400);
+                })
+                .toBodilessEntity();
+    }
+
+    @Test
+    void getTrends_WithTooLongPeriod_ShouldReturnValidationError() {
+        restClient.get()
+                .uri("/trends?from=USD&to=EUR&period=2Y")
+                .retrieve()
+                .onStatus(status -> status.value() == 400, (request, httpResponse) -> {
+                    assertThat(httpResponse.getStatusCode().value()).isEqualTo(400);
+                })
+                .toBodilessEntity();
+    }
+
+    @Test
+    void getTrends_WithMissingToCurrency_ShouldReturnValidationError() {
+        restClient.get()
+                .uri("/trends?from=USD&period=7D")
+                .retrieve()
+                .onStatus(status -> status.value() == 400, (request, httpResponse) -> {
+                    assertThat(httpResponse.getStatusCode().value()).isEqualTo(400);
+                })
+                .toBodilessEntity();
+    }
+
+    @Test
+    void getTrends_WithMissingPeriod_ShouldReturnValidationError() {
+        restClient.get()
+                .uri("/trends?from=USD&to=EUR")
+                .retrieve()
+                .onStatus(status -> status.value() == 400, (request, httpResponse) -> {
+                    assertThat(httpResponse.getStatusCode().value()).isEqualTo(400);
+                })
+                .toBodilessEntity();
     }
 }
