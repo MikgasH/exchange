@@ -28,13 +28,13 @@ scheduling:
 
 api:
   fixer:
-    url: https://data.fixer.io/api1
+    url: https://data.fixer.io/api
     access-key: ${FIXER_API_KEY}
   exchangerates:
-    url: https://api.exchangeratesapi.io/v11
+    url: https://api.exchangeratesapi.io/v1
     access-key: ${EXCHANGERATES_API_KEY}
   currencyapi:
-    url: https://api.currencyapi.com/v31
+    url: https://api.currencyapi.com/v3
     access-key: ${CURRENCYAPI_KEY}
   mock1:
     url: ${MOCK_SERVICE_1_URL:http://localhost:8081}
@@ -47,3 +47,7 @@ cache:
 
 exchange-rates:
   base-currency: EUR
+
+jwt:
+  secret: ${JWT_SECRET}
+  expiration: 86400000

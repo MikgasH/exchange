@@ -6,11 +6,15 @@ import com.example.cerpshashkin.dto.TrendsRequest;
 import com.example.cerpshashkin.dto.TrendsResponse;
 import com.example.cerpshashkin.service.CurrencyService;
 import com.example.cerpshashkin.validation.ValidCurrency;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
@@ -26,6 +30,7 @@ import java.util.List;
 @RequiredArgsConstructor
 @Slf4j
 @Validated
+@Tag(name = "Currency", description = "Currency exchange operations")
 public class CurrencyController {
 
     private static final String LOG_GET_CURRENCIES = "GET /api/v1/currencies - getting supported currencies";
@@ -46,6 +51,12 @@ public class CurrencyController {
     private final CurrencyService currencyService;
 
     @GetMapping
+    @Operation(
+            summary = "Get list of supported currencies",
+            description = "Returns all currencies available for exchange rate operations. "
+                    + "Available for: USER, PREMIUM_USER, ADMIN"
+    )
+    @SecurityRequirement(name = "Bearer Authentication")
     public ResponseEntity<List<String>> getCurrencies() {
         log.info(LOG_GET_CURRENCIES);
         final List<String> currencies = currencyService.getSupportedCurrencies();
@@ -54,6 +65,13 @@ public class CurrencyController {
     }
 
     @PostMapping
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(
+            summary = "Add a new currency (ADMIN only)",
+            description = "Adds a new currency to the list of supported currencies for exchange rate tracking. "
+                    + "Only administrators can add new currencies. Available for: ADMIN only"
+    )
+    @SecurityRequirement(name = "Bearer Authentication")
     @Validated
     public ResponseEntity<String> addCurrency(
             @RequestParam
@@ -71,6 +89,12 @@ public class CurrencyController {
     }
 
     @GetMapping("/exchange-rates")
+    @Operation(
+            summary = "Get exchange rate and convert amount",
+            description = "Converts an amount from one currency to another using current exchange rates. "
+                    + "Available for: USER, PREMIUM_USER, ADMIN"
+    )
+    @SecurityRequirement(name = "Bearer Authentication")
     public ResponseEntity<ConversionResponse> getExchangeRates(
             @Valid @ModelAttribute final ConversionRequest request) {
 
@@ -87,6 +111,13 @@ public class CurrencyController {
     }
 
     @PostMapping("/refresh")
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(
+            summary = "Refresh exchange rates (ADMIN only)",
+            description = "Manually triggers an update of exchange rates from external providers. "
+                    + "Available for: ADMIN only"
+    )
+    @SecurityRequirement(name = "Bearer Authentication")
     public ResponseEntity<String> refreshRates() {
         log.info(LOG_REFRESH_RATES);
         currencyService.refreshExchangeRates();
@@ -95,6 +126,14 @@ public class CurrencyController {
     }
 
     @GetMapping("/trends")
+    @PreAuthorize("hasAnyRole('PREMIUM_USER', 'ADMIN')")
+    @Operation(
+            summary = "Get exchange rate trends (PREMIUM_USER, ADMIN)",
+            description = "Analyzes how the exchange rate between two currencies has changed over a specified period. "
+                    + "Minimum period: 12H, Maximum: 1Y. Examples: 12H, 7D, 3M, 1Y. "
+                    + "Available for: PREMIUM_USER, ADMIN"
+    )
+    @SecurityRequirement(name = "Bearer Authentication")
     public ResponseEntity<TrendsResponse> getTrends(
             @Valid @ModelAttribute final TrendsRequest request) {
         log.info(LOG_TRENDS_REQUEST, request.from(), request.to(), request.period());

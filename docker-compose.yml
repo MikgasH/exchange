@@ -60,6 +60,7 @@ services:
       - CURRENCYAPI_KEY=${CURRENCYAPI_KEY}
       - MOCK_SERVICE_1_URL=http://mock-service-1:8081
       - MOCK_SERVICE_2_URL=http://mock-service-2:8082
+      - JWT_SECRET=${JWT_SECRET}
     networks:
       - currency-network
     restart: unless-stopped

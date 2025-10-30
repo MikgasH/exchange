@@ -43,3 +43,7 @@ api:
     url: http://dummy-mock1-url
   mock2:
     url: http://dummy-mock2-url
+
+jwt:
+  secret: dGVzdC1zZWNyZXQta2V5LWZvci1qd3QtdG9rZW4tdGVzdGluZy1wdXJwb3Nlcy1vbmx5LTEyMzQ1Njc4OTA=
+  expiration: 86400000
