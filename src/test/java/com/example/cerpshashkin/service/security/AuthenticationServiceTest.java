@@ -1,8 +1,10 @@
 package com.example.cerpshashkin.service.security;
 
+import com.example.cerpshashkin.dto.ChangePasswordRequest;
 import com.example.cerpshashkin.dto.LoginRequest;
 import com.example.cerpshashkin.dto.LoginResponse;
 import com.example.cerpshashkin.dto.RegisterRequest;
+import com.example.cerpshashkin.dto.UserInfoResponse;
 import com.example.cerpshashkin.entity.RoleEntity;
 import com.example.cerpshashkin.entity.UserEntity;
 import com.example.cerpshashkin.exception.UserAlreadyExistsException;
@@ -14,19 +16,27 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
+import java.time.Instant;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -48,7 +58,7 @@ class AuthenticationServiceTest {
     private JwtService jwtService;
 
     @Mock
-    private CustomUserDetailsService userDetailsService;
+    private AuthenticationManager authenticationManager;
 
     @InjectMocks
     private AuthenticationService authenticationService;
@@ -130,8 +140,11 @@ class AuthenticationServiceTest {
                 .authorities(new SimpleGrantedAuthority("ROLE_USER"))
                 .build();
 
-        when(userDetailsService.loadUserByUsername(request.email())).thenReturn(userDetails);
-        when(passwordEncoder.matches(request.password(), userDetails.getPassword())).thenReturn(true);
+        Authentication authentication = mock(Authentication.class);
+        when(authentication.getPrincipal()).thenReturn(userDetails);
+
+        when(authenticationManager.authenticate(any(UsernamePasswordAuthenticationToken.class)))
+                .thenReturn(authentication);
         when(jwtService.generateToken(userDetails)).thenReturn("jwt_token_here");
 
         LoginResponse response = authenticationService.login(request);
@@ -143,8 +156,7 @@ class AuthenticationServiceTest {
         assertThat(response.roles()).hasSize(1);
         assertThat(response.roles()).contains("ROLE_USER");
 
-        verify(userDetailsService, times(1)).loadUserByUsername(request.email());
-        verify(passwordEncoder, times(1)).matches(request.password(), userDetails.getPassword());
+        verify(authenticationManager, times(1)).authenticate(any(UsernamePasswordAuthenticationToken.class));
         verify(jwtService, times(1)).generateToken(userDetails);
     }
 
@@ -155,14 +167,8 @@ class AuthenticationServiceTest {
                 .password("WrongPassword123!")
                 .build();
 
-        UserDetails userDetails = User.builder()
-                .username("user@example.com")
-                .password("encoded_password")
-                .authorities(new SimpleGrantedAuthority("ROLE_USER"))
-                .build();
-
-        when(userDetailsService.loadUserByUsername(request.email())).thenReturn(userDetails);
-        when(passwordEncoder.matches(request.password(), userDetails.getPassword())).thenReturn(false);
+        when(authenticationManager.authenticate(any(UsernamePasswordAuthenticationToken.class)))
+                .thenThrow(new BadCredentialsException("Invalid email or password"));
 
         assertThatThrownBy(() -> authenticationService.login(request))
                 .isInstanceOf(BadCredentialsException.class)
@@ -189,13 +195,219 @@ class AuthenticationServiceTest {
                 )
                 .build();
 
-        when(userDetailsService.loadUserByUsername(request.email())).thenReturn(userDetails);
-        when(passwordEncoder.matches(request.password(), userDetails.getPassword())).thenReturn(true);
+        Authentication authentication = mock(Authentication.class);
+        when(authentication.getPrincipal()).thenReturn(userDetails);
+
+        when(authenticationManager.authenticate(any(UsernamePasswordAuthenticationToken.class)))
+                .thenReturn(authentication);
         when(jwtService.generateToken(userDetails)).thenReturn("jwt_token_here");
 
         LoginResponse response = authenticationService.login(request);
 
         assertThat(response.roles()).hasSize(2);
         assertThat(response.roles()).contains("ROLE_USER", "ROLE_ADMIN");
+    }
+
+    @Test
+    void login_WithDisabledUser_ShouldThrowException() {
+        LoginRequest request = LoginRequest.builder()
+                .email("disabled@example.com")
+                .password("Password123!")
+                .build();
+
+        when(authenticationManager.authenticate(any(UsernamePasswordAuthenticationToken.class)))
+                .thenThrow(new BadCredentialsException("User account is disabled"));
+
+        assertThatThrownBy(() -> authenticationService.login(request))
+                .isInstanceOf(BadCredentialsException.class);
+
+        verify(jwtService, never()).generateToken(any());
+    }
+
+    @Test
+    void getCurrentUserInfo_WithValidEmail_ShouldReturnUserInfo() {
+        String email = "user@example.com";
+
+        RoleEntity roleUser = RoleEntity.builder()
+                .id(1L)
+                .name("ROLE_USER")
+                .build();
+
+        Set<RoleEntity> roles = new HashSet<>();
+        roles.add(roleUser);
+
+        UserEntity user = UserEntity.builder()
+                .id(100L)
+                .email(email)
+                .password("encoded_password")
+                .enabled(true)
+                .createdAt(Instant.now())
+                .roles(roles)
+                .build();
+
+        when(userRepository.findByEmail(email)).thenReturn(Optional.of(user));
+
+        UserInfoResponse response = authenticationService.getCurrentUserInfo(email);
+
+        assertThat(response).isNotNull();
+        assertThat(response.id()).isEqualTo(100L);
+        assertThat(response.email()).isEqualTo(email);
+        assertThat(response.roles()).hasSize(1);
+        assertThat(response.roles()).contains("ROLE_USER");
+        assertThat(response.enabled()).isTrue();
+        assertThat(response.createdAt()).isNotNull();
+    }
+
+    @Test
+    void getCurrentUserInfo_WithNonExistentUser_ShouldThrowException() {
+        String email = "nonexistent@example.com";
+
+        when(userRepository.findByEmail(email)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> authenticationService.getCurrentUserInfo(email))
+                .isInstanceOf(UsernameNotFoundException.class)
+                .hasMessageContaining("User not found: nonexistent@example.com");
+    }
+
+    @Test
+    void getCurrentUserInfo_WithMultipleRoles_ShouldReturnAllRoles() {
+        String email = "admin@example.com";
+
+        RoleEntity roleUser = RoleEntity.builder()
+                .id(1L)
+                .name("ROLE_USER")
+                .build();
+
+        RoleEntity roleAdmin = RoleEntity.builder()
+                .id(3L)
+                .name("ROLE_ADMIN")
+                .build();
+
+        Set<RoleEntity> roles = new HashSet<>();
+        roles.add(roleUser);
+        roles.add(roleAdmin);
+
+        UserEntity user = UserEntity.builder()
+                .id(102L)
+                .email(email)
+                .password("encoded_password")
+                .enabled(true)
+                .createdAt(Instant.now())
+                .roles(roles)
+                .build();
+
+        when(userRepository.findByEmail(email)).thenReturn(Optional.of(user));
+
+        UserInfoResponse response = authenticationService.getCurrentUserInfo(email);
+
+        assertThat(response.roles()).hasSize(2);
+        assertThat(response.roles()).containsExactlyInAnyOrder("ROLE_USER", "ROLE_ADMIN");
+    }
+
+    @Test
+    void changePassword_WithValidCurrentPassword_ShouldUpdatePassword() {
+        String email = "user@example.com";
+        String currentPassword = "OldPassword123!";
+        String newPassword = "NewPassword123!";
+
+        ChangePasswordRequest request = ChangePasswordRequest.builder()
+                .currentPassword(currentPassword)
+                .newPassword(newPassword)
+                .build();
+
+        UserEntity user = UserEntity.builder()
+                .id(100L)
+                .email(email)
+                .password("encoded_old_password")
+                .enabled(true)
+                .build();
+
+        when(userRepository.findByEmail(email)).thenReturn(Optional.of(user));
+        when(passwordEncoder.matches(currentPassword, user.getPassword())).thenReturn(true);
+        when(passwordEncoder.matches(newPassword, user.getPassword())).thenReturn(false);
+        when(passwordEncoder.encode(newPassword)).thenReturn("encoded_new_password");
+
+        authenticationService.changePassword(email, request);
+
+        ArgumentCaptor<UserEntity> userCaptor = ArgumentCaptor.forClass(UserEntity.class);
+        verify(userRepository, times(1)).save(userCaptor.capture());
+
+        UserEntity savedUser = userCaptor.getValue();
+        assertThat(savedUser.getPassword()).isEqualTo("encoded_new_password");
+    }
+
+    @Test
+    void changePassword_WithInvalidCurrentPassword_ShouldThrowException() {
+        String email = "user@example.com";
+        String currentPassword = "WrongPassword123!";
+        String newPassword = "NewPassword123!";
+
+        ChangePasswordRequest request = ChangePasswordRequest.builder()
+                .currentPassword(currentPassword)
+                .newPassword(newPassword)
+                .build();
+
+        UserEntity user = UserEntity.builder()
+                .id(100L)
+                .email(email)
+                .password("encoded_old_password")
+                .enabled(true)
+                .build();
+
+        when(userRepository.findByEmail(email)).thenReturn(Optional.of(user));
+        when(passwordEncoder.matches(currentPassword, user.getPassword())).thenReturn(false);
+
+        assertThatThrownBy(() -> authenticationService.changePassword(email, request))
+                .isInstanceOf(BadCredentialsException.class)
+                .hasMessageContaining("Current password is incorrect");
+
+        verify(userRepository, never()).save(any());
+    }
+
+    @Test
+    void changePassword_WithSamePassword_ShouldThrowException() {
+        String email = "user@example.com";
+        String currentPassword = "Password123!";
+        String newPassword = "Password123!";
+
+        ChangePasswordRequest request = ChangePasswordRequest.builder()
+                .currentPassword(currentPassword)
+                .newPassword(newPassword)
+                .build();
+
+        UserEntity user = UserEntity.builder()
+                .id(100L)
+                .email(email)
+                .password("encoded_password")
+                .enabled(true)
+                .build();
+
+        when(userRepository.findByEmail(email)).thenReturn(Optional.of(user));
+        when(passwordEncoder.matches(currentPassword, user.getPassword())).thenReturn(true);
+        when(passwordEncoder.matches(newPassword, user.getPassword())).thenReturn(true);
+
+        assertThatThrownBy(() -> authenticationService.changePassword(email, request))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("New password must be different from the current password");
+
+        verify(userRepository, never()).save(any());
+    }
+
+    @Test
+    void changePassword_WithNonExistentUser_ShouldThrowException() {
+        String email = "nonexistent@example.com";
+
+        ChangePasswordRequest request = ChangePasswordRequest.builder()
+                .currentPassword("OldPassword123!")
+                .newPassword("NewPassword123!")
+                .build();
+
+        when(userRepository.findByEmail(email)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> authenticationService.changePassword(email, request))
+                .isInstanceOf(UsernameNotFoundException.class)
+                .hasMessageContaining("User not found: nonexistent@example.com");
+
+        verify(userRepository, never()).save(any());
     }
 }

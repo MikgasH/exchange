@@ -1,18 +1,24 @@
 package com.example.cerpshashkin.controller;
 
+import com.example.cerpshashkin.dto.ChangePasswordRequest;
 import com.example.cerpshashkin.dto.LoginRequest;
 import com.example.cerpshashkin.dto.LoginResponse;
 import com.example.cerpshashkin.dto.RegisterRequest;
+import com.example.cerpshashkin.dto.UserInfoResponse;
 import com.example.cerpshashkin.service.security.AuthenticationService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.core.Authentication;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -29,7 +35,10 @@ public class AuthController {
     private static final String LOG_REGISTER_SUCCESS = "User registered successfully: {}";
     private static final String LOG_LOGIN_REQUEST = "POST /api/v1/auth/login - login attempt for user: {}";
     private static final String LOG_LOGIN_SUCCESS = "User logged in successfully: {}";
+    private static final String LOG_GET_CURRENT_USER = "GET /api/v1/auth/me - getting current user info";
+    private static final String LOG_CHANGE_PASSWORD_REQUEST = "POST /api/v1/auth/change-password - user: {}";
 
+    private static final String MESSAGE_PASSWORD_CHANGED = "Password changed successfully";
     private static final String MESSAGE_REGISTER_SUCCESS = "User registered successfully";
 
     private final AuthenticationService authenticationService;
@@ -72,5 +81,54 @@ public class AuthController {
 
         log.info(LOG_LOGIN_SUCCESS, request.email());
         return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/me")
+    @Operation(
+            summary = "Get current user information",
+            description = "Returns information about the currently authenticated user including id, email, roles, and account status"
+    )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "User information retrieved successfully"),
+            @ApiResponse(responseCode = "401", description = "Unauthorized - invalid or missing token")
+    })
+    @SecurityRequirement(name = "Bearer Authentication")
+    public ResponseEntity<UserInfoResponse> getCurrentUser(final Authentication authentication) {
+        log.info(LOG_GET_CURRENT_USER);
+
+        if (authentication == null) {
+            throw new BadCredentialsException("Authentication object is missing.");
+        }
+
+        final UserInfoResponse response = authenticationService.getCurrentUserInfo(authentication.getName());
+
+        return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/change-password")
+    @Operation(
+            summary = "Change password",
+            description = "Changes the password for the currently authenticated user. "
+                    + "Requires current password for verification. New password must meet security requirements."
+    )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Password changed successfully"),
+            @ApiResponse(responseCode = "400", description = "Invalid password or new password same as current"),
+            @ApiResponse(responseCode = "401", description = "Unauthorized - invalid current password or token")
+    })
+    @SecurityRequirement(name = "Bearer Authentication")
+    public ResponseEntity<String> changePassword(
+            @Valid @RequestBody final ChangePasswordRequest request,
+            final Authentication authentication) {
+
+        if (authentication == null) {
+            throw new BadCredentialsException("Authentication object is missing.");
+        }
+
+        log.info(LOG_CHANGE_PASSWORD_REQUEST, authentication.getName());
+
+        authenticationService.changePassword(authentication.getName(), request);
+
+        return ResponseEntity.ok(MESSAGE_PASSWORD_CHANGED);
     }
 }

@@ -137,6 +137,12 @@ public class GlobalExceptionHandler {
         return createProblemDetail(HttpStatus.FORBIDDEN, "Access denied", "You don't have permission to access this resource");
     }
 
+    @ExceptionHandler(IllegalArgumentException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public ProblemDetail handleIllegalArgumentException(final IllegalArgumentException ex) {
+        return createProblemDetail(HttpStatus.BAD_REQUEST, "Invalid argument", ex.getMessage());
+    }
+
     private ProblemDetail createProblemDetail(final HttpStatus status, final String title, final String detail) {
         ProblemDetail problemDetail = ProblemDetail.forStatus(status.value());
         problemDetail.setTitle(title);

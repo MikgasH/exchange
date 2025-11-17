@@ -50,15 +50,14 @@ class CurrencyServiceIntegrationTest extends BaseWireMockTest {
 
     @Test
     void addCurrency_WithDuplicate_ShouldNotCreateDuplicate() {
-        String currency = "DKK";
+        String currency = "USD";
+
+        int countBefore = currencyService.getSupportedCurrencies().size();
 
         currencyService.addCurrency(currency);
-        int countAfterFirst = currencyService.getSupportedCurrencies().size();
+        int countAfter = currencyService.getSupportedCurrencies().size();
 
-        currencyService.addCurrency(currency);
-        int countAfterSecond = currencyService.getSupportedCurrencies().size();
-
-        assertThat(countAfterFirst).isEqualTo(countAfterSecond);
+        assertThat(countAfter).isEqualTo(countBefore);
     }
 
     @Test
