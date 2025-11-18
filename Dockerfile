@@ -10,9 +10,18 @@ RUN mvn clean package -DskipTests
 
 FROM eclipse-temurin:21-jre-alpine
 
+RUN apk add --no-cache ca-certificates openssl
+
 WORKDIR /app
 
 COPY --from=builder /app/target/*.jar app.jar
+COPY certificates/*.crt /tmp/certs/
+
+RUN keytool -import -trustcacerts -noprompt \
+    -alias cloud-services-root -file "/tmp/certs/Cloud Services Root CA.crt" \
+    -keystore /opt/java/openjdk/lib/security/cacerts \
+    -storepass changeit && \
+    rm -rf /tmp/certs
 
 EXPOSE 8080
 
