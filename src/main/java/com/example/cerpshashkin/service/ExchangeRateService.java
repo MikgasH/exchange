@@ -36,7 +36,9 @@ public class ExchangeRateService {
     private static final String LOG_CACHE_HIT_INVERSE = "Cache HIT: {} -> {} (inverse)";
     private static final String LOG_CACHE_HIT_CROSS = "Cache HIT: {} -> {} (cross-rate via {})";
     private static final String LOG_CACHE_MISS = "Cache MISS: {} -> {}";
-    private static final String LOG_DB_HIT = "Database HIT: {} -> {}";
+    private static final String LOG_DB_HIT_DIRECT = "Database HIT: {} -> {} (direct)";
+    private static final String LOG_DB_HIT_INVERSE = "Database HIT: {} -> {} (inverse)";
+    private static final String LOG_DB_HIT_CROSS = "Database HIT: {} -> {} (cross-rate via {})";
     private static final String LOG_PROVIDERS_FALLBACK = "Fetching from providers as fallback";
     private static final String LOG_ERROR_REFRESH_RATES = "Failed to refresh exchange rates";
     private static final String LOG_INFO_REFRESHING_RATES = "Refreshing exchange rates from providers";
@@ -136,18 +138,68 @@ public class ExchangeRateService {
     }
 
     private Optional<BigDecimal> getFromDatabase(final Currency from, final Currency to) {
-        return exchangeRateRepository
-                .findFirstByBaseCurrencyAndTargetCurrencyOrderByTimestampDesc(
-                        from,
-                        to
-                )
+        Optional<BigDecimal> direct = exchangeRateRepository
+                .findFirstByBaseCurrencyAndTargetCurrencyOrderByTimestampDesc(from, to)
                 .filter(this::isNotTooOld)
                 .map(entity -> {
-                    log.info(LOG_DB_HIT, from.getCurrencyCode(), to.getCurrencyCode());
                     final BigDecimal rate = entity.getRate();
                     cache.putRate(from, to, rate);
+                    log.info(LOG_DB_HIT_DIRECT, from.getCurrencyCode(), to.getCurrencyCode());
                     return rate;
                 });
+
+        if (direct.isPresent()) {
+            return direct;
+        }
+
+        Optional<BigDecimal> inverse = exchangeRateRepository
+                .findFirstByBaseCurrencyAndTargetCurrencyOrderByTimestampDesc(to, from)
+                .filter(this::isNotTooOld)
+                .map(entity -> {
+                    final BigDecimal rate = BigDecimal.ONE.divide(
+                            entity.getRate(),
+                            SCALE,
+                            RoundingMode.HALF_UP
+                    );
+                    cache.putRate(from, to, rate);
+                    log.info(LOG_DB_HIT_INVERSE, from.getCurrencyCode(), to.getCurrencyCode());
+                    return rate;
+                });
+
+        if (inverse.isPresent()) {
+            return inverse;
+        }
+
+        return calculateCrossRateFromDatabase(from, to);
+    }
+
+    private Optional<BigDecimal> calculateCrossRateFromDatabase(
+            final Currency from,
+            final Currency to
+    ) {
+        final Currency base = Currency.getInstance(baseCurrencyCode);
+
+        final Optional<ExchangeRateEntity> fromEntity = exchangeRateRepository
+                .findFirstByBaseCurrencyAndTargetCurrencyOrderByTimestampDesc(base, from)
+                .filter(this::isNotTooOld);
+
+        final Optional<ExchangeRateEntity> toEntity = exchangeRateRepository
+                .findFirstByBaseCurrencyAndTargetCurrencyOrderByTimestampDesc(base, to)
+                .filter(this::isNotTooOld);
+
+        if (fromEntity.isPresent() && toEntity.isPresent()) {
+            final BigDecimal fromRate = fromEntity.get().getRate();
+            final BigDecimal toRate = toEntity.get().getRate();
+
+            final BigDecimal crossRate = toRate.divide(fromRate, SCALE, RoundingMode.HALF_UP);
+
+            cache.putRate(from, to, crossRate);
+            log.info(LOG_DB_HIT_CROSS, from.getCurrencyCode(), to.getCurrencyCode(), base.getCurrencyCode());
+
+            return Optional.of(crossRate);
+        }
+
+        return Optional.empty();
     }
 
     private boolean isNotTooOld(final ExchangeRateEntity entity) {

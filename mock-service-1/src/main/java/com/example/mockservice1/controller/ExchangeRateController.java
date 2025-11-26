@@ -27,26 +27,26 @@ public class ExchangeRateController {
     private static final int SCALE = 6;
 
     private static final Map<String, BigDecimal> BASE_RATES = Map.ofEntries(
-            Map.entry("USD", BigDecimal.valueOf(1.08)),
-            Map.entry("GBP", BigDecimal.valueOf(0.85)),
-            Map.entry("JPY", BigDecimal.valueOf(160.0)),
-            Map.entry("CHF", BigDecimal.valueOf(0.97)),
-            Map.entry("CAD", BigDecimal.valueOf(1.5)),
-            Map.entry("AUD", BigDecimal.valueOf(1.65)),
-            Map.entry("CNY", BigDecimal.valueOf(7.8)),
-            Map.entry("SEK", BigDecimal.valueOf(11.5)),
-            Map.entry("NZD", BigDecimal.valueOf(1.7)),
-            Map.entry("BYN", BigDecimal.valueOf(3.5)),
-            Map.entry("NOK", BigDecimal.valueOf(11.8)),
-            Map.entry("DKK", BigDecimal.valueOf(7.45)),
-            Map.entry("PLN", BigDecimal.valueOf(4.3)),
-            Map.entry("CZK", BigDecimal.valueOf(25.0)),
-            Map.entry("HUF", BigDecimal.valueOf(390.0)),
-            Map.entry("RON", BigDecimal.valueOf(4.95)),
-            Map.entry("TRY", BigDecimal.valueOf(35.0)),
-            Map.entry("INR", BigDecimal.valueOf(90.0)),
-            Map.entry("BRL", BigDecimal.valueOf(5.4)),
-            Map.entry("MXN", BigDecimal.valueOf(18.5))
+            Map.entry("USD", BigDecimal.valueOf(1.1583)),
+            Map.entry("GBP", BigDecimal.valueOf(0.8827)),
+            Map.entry("JPY", BigDecimal.valueOf(180.85)),
+            Map.entry("CHF", BigDecimal.valueOf(0.9284)),
+            Map.entry("CAD", BigDecimal.valueOf(1.6230)),
+            Map.entry("AUD", BigDecimal.valueOf(1.7853)),
+            Map.entry("CNY", BigDecimal.valueOf(8.2359)),
+            Map.entry("SEK", BigDecimal.valueOf(10.9920)),
+            Map.entry("NZD", BigDecimal.valueOf(2.0585)),
+            Map.entry("BYN", BigDecimal.valueOf(3.96)),
+            Map.entry("NOK", BigDecimal.valueOf(11.7480)),
+            Map.entry("DKK", BigDecimal.valueOf(7.4691)),
+            Map.entry("PLN", BigDecimal.valueOf(4.2283)),
+            Map.entry("CZK", BigDecimal.valueOf(24.159)),
+            Map.entry("HUF", BigDecimal.valueOf(382.33)),
+            Map.entry("RON", BigDecimal.valueOf(5.0879)),
+            Map.entry("TRY", BigDecimal.valueOf(49.0618)),
+            Map.entry("INR", BigDecimal.valueOf(102.5145)),
+            Map.entry("BRL", BigDecimal.valueOf(6.1800)),
+            Map.entry("MXN", BigDecimal.valueOf(21.2283))
     );
 
     @GetMapping("/latest")
