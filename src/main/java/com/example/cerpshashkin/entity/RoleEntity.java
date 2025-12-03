@@ -5,6 +5,7 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.SequenceGenerator;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -22,8 +23,12 @@ import lombok.NoArgsConstructor;
 public class RoleEntity {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.AUTO)
-    @EqualsAndHashCode.Include
+    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "roles_seq_gen")
+    @SequenceGenerator(
+            name = "roles_seq_gen",
+            sequenceName = "roles_seq",
+            allocationSize = 1
+    )
     private Long id;
 
     @Column(name = "name", nullable = false, unique = true, length = 50)

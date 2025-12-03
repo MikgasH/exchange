@@ -3,13 +3,18 @@ databaseChangeLog:
       id: create-roles-table
       author: hashkin
       changes:
+        - createSequence:
+            sequenceName: roles_seq
+            startValue: 1
+            incrementBy: 1
+
         - createTable:
             tableName: roles
             columns:
               - column:
                   name: id
                   type: BIGINT
-                  autoIncrement: true
+                  defaultValueSequenceNext: roles_seq
                   constraints:
                     primaryKey: true
                     nullable: false
@@ -22,3 +27,5 @@ databaseChangeLog:
       rollback:
         - dropTable:
             tableName: roles
+        - dropSequence:
+            sequenceName: roles_seq

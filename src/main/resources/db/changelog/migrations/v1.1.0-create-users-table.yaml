@@ -3,12 +3,18 @@ databaseChangeLog:
       id: 1.1.0-create-users-table
       author: system
       changes:
+        - createSequence:
+            sequenceName: users_seq
+            startValue: 1
+            incrementBy: 1
+
         - createTable:
             tableName: users
             columns:
               - column:
                   name: id
-                  type: BIGSERIAL
+                  type: BIGINT
+                  defaultValueSequenceNext: users_seq
                   constraints:
                     primaryKey: true
                     nullable: false
