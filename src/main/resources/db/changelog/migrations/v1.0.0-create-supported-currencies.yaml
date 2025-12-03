@@ -3,13 +3,18 @@ databaseChangeLog:
       id: create-supported-currencies-table
       author: hashkin
       changes:
+        - createSequence:
+            sequenceName: supported_currencies_seq
+            startValue: 1
+            incrementBy: 1
+
         - createTable:
             tableName: supported_currencies
             columns:
               - column:
                   name: id
                   type: BIGINT
-                  autoIncrement: true
+                  defaultValueSequenceNext: supported_currencies_seq
                   constraints:
                     primaryKey: true
                     nullable: false
@@ -22,3 +27,5 @@ databaseChangeLog:
       rollback:
         - dropTable:
             tableName: supported_currencies
+        - dropSequence:
+            sequenceName: supported_currencies_seq
