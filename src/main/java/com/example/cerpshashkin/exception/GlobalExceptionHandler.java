@@ -107,12 +107,6 @@ public class GlobalExceptionHandler {
         return createProblemDetail(HttpStatus.BAD_REQUEST, "Insufficient data", ex.getMessage());
     }
 
-    @ExceptionHandler(UserAlreadyExistsException.class)
-    @ResponseStatus(HttpStatus.CONFLICT)
-    public ProblemDetail handleUserAlreadyExistsException(final UserAlreadyExistsException ex) {
-        return createProblemDetail(HttpStatus.CONFLICT, "User already exists", ex.getMessage());
-    }
-
     @ExceptionHandler(BadCredentialsException.class)
     @ResponseStatus(HttpStatus.UNAUTHORIZED)
     public ProblemDetail handleBadCredentialsException(final BadCredentialsException ex) {
