@@ -1,15 +1,5 @@
 package com.example.cerpshashkin.service.security;
 
-import com.example.cerpshashkin.dto.ChangePasswordRequest;
-import com.example.cerpshashkin.dto.LoginRequest;
-import com.example.cerpshashkin.dto.LoginResponse;
-import com.example.cerpshashkin.dto.RegisterRequest;
-import com.example.cerpshashkin.dto.UserInfoResponse;
-import com.example.cerpshashkin.entity.RoleEntity;
-import com.example.cerpshashkin.entity.UserEntity;
-import com.example.cerpshashkin.exception.UserAlreadyExistsException;
-import com.example.cerpshashkin.repository.RoleRepository;
-import com.example.cerpshashkin.repository.UserRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;

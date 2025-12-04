@@ -1,8 +1,5 @@
 package com.example.cerpshashkin.service.security;
 
-import com.example.cerpshashkin.entity.RoleEntity;
-import com.example.cerpshashkin.entity.UserEntity;
-import com.example.cerpshashkin.repository.UserRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;

@@ -1,11 +1,7 @@
 package com.example.cerpshashkin;
 
-import com.example.cerpshashkin.entity.RoleEntity;
 import com.example.cerpshashkin.entity.SupportedCurrencyEntity;
-import com.example.cerpshashkin.entity.UserEntity;
-import com.example.cerpshashkin.repository.RoleRepository;
 import com.example.cerpshashkin.repository.SupportedCurrencyRepository;
-import com.example.cerpshashkin.repository.UserRepository;
 import com.github.tomakehurst.wiremock.WireMockServer;
 import com.github.tomakehurst.wiremock.client.WireMock;
 import com.github.tomakehurst.wiremock.core.WireMockConfiguration;

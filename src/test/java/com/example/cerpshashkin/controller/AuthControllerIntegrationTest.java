@@ -1,9 +1,6 @@
 package com.example.cerpshashkin.controller;
 
 import com.example.cerpshashkin.BaseWireMockTest;
-import com.example.cerpshashkin.dto.LoginRequest;
-import com.example.cerpshashkin.dto.RegisterRequest;
-import com.example.cerpshashkin.repository.UserRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;

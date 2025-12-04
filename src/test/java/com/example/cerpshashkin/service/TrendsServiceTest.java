@@ -1,7 +1,5 @@
 package com.example.cerpshashkin.service;
 
-import com.example.cerpshashkin.dto.TrendsRequest;
-import com.example.cerpshashkin.dto.TrendsResponse;
 import com.example.cerpshashkin.entity.ExchangeRateEntity;
 import com.example.cerpshashkin.entity.ExchangeRateSource;
 import com.example.cerpshashkin.exception.InsufficientDataException;

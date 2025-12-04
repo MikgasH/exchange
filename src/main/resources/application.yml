@@ -51,3 +51,7 @@ exchange-rates:
 jwt:
   secret: ${JWT_SECRET}
   expiration: 86400000
+
+services:
+  user-service:
+    url: ${USER_SERVICE_URL:http://localhost:8083}

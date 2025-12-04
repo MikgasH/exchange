@@ -1,6 +1,6 @@
 package com.example.cerpshashkin.config;
 
-import com.example.cerpshashkin.service.security.CustomUserDetailsService;
+import com.example.cerpshashkin.filter.JwtAuthenticationFilter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -27,45 +27,50 @@ public class SecurityConfig {
     private static final String ROLE_PREMIUM_USER = "PREMIUM_USER";
     private static final String ROLE_ADMIN = "ADMIN";
 
-    private static final String ENDPOINT_CURRENCIES = "/api/v1/currencies";
-    private static final String ENDPOINT_EXCHANGE_RATES = "/api/v1/currencies/exchange-rates";
-    private static final String ENDPOINT_TRENDS = "/api/v1/currencies/trends";
-    private static final String ENDPOINT_REFRESH = "/api/v1/currencies/refresh";
+    // Currency API endpoints
+    private static final String ENDPOINT_CONVERT = "/api/v1/currency/convert";
+    private static final String ENDPOINT_RATES = "/api/v1/currency/rates";
+    private static final String ENDPOINT_SUPPORTED = "/api/v1/currency/supported";
 
+    // Публичные endpoints (Swagger и healthcheck)
     private static final String[] PUBLIC_ENDPOINTS = {
-            "/api/v1/auth/**",
             "/swagger-ui/**",
-            "/v3/api-docs/**"
+            "/swagger-ui.html",
+            "/v3/api-docs/**",
+            "/swagger-resources/**",
+            "/webjars/**",
+            "/actuator/**"
     };
 
     private static final int BCRYPT_STRENGTH = 12;
 
-    private final JwtAuthenticationFilter jwtAuthFilter;
-    private final CustomUserDetailsService userDetailsService;
+    private final JwtAuthenticationFilter jwtAuthenticationFilter;
 
     @Bean
     public SecurityFilterChain securityFilterChain(final HttpSecurity http) throws Exception {
         http
                 .csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(auth -> auth
+                        // Swagger и Actuator публичные
                         .requestMatchers(PUBLIC_ENDPOINTS).permitAll()
-                        .requestMatchers(HttpMethod.GET, ENDPOINT_CURRENCIES)
+
+                        // Currency API endpoints - требуют JWT + роли
+                        .requestMatchers(HttpMethod.GET, ENDPOINT_CONVERT)
                         .hasAnyRole(ROLE_USER, ROLE_PREMIUM_USER, ROLE_ADMIN)
-                        .requestMatchers(HttpMethod.POST, ENDPOINT_CURRENCIES)
-                        .hasRole(ROLE_ADMIN)
-                        .requestMatchers(HttpMethod.GET, ENDPOINT_EXCHANGE_RATES)
+
+                        .requestMatchers(HttpMethod.GET, ENDPOINT_RATES)
                         .hasAnyRole(ROLE_USER, ROLE_PREMIUM_USER, ROLE_ADMIN)
-                        .requestMatchers(HttpMethod.POST, ENDPOINT_REFRESH)
-                        .hasRole(ROLE_ADMIN)
-                        .requestMatchers(HttpMethod.GET, ENDPOINT_TRENDS)
-                        .hasAnyRole(ROLE_PREMIUM_USER, ROLE_ADMIN)
+
+                        .requestMatchers(HttpMethod.GET, ENDPOINT_SUPPORTED)
+                        .hasAnyRole(ROLE_USER, ROLE_PREMIUM_USER, ROLE_ADMIN)
+
+                        // Все остальные endpoints требуют аутентификации
                         .anyRequest().authenticated()
                 )
                 .sessionManagement(session -> session
                         .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
                 )
-                .userDetailsService(userDetailsService)
-                .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
+                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }
