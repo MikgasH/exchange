@@ -1,7 +1,6 @@
 package com.example.cerpshashkin.controller;
 
 import com.example.cerpshashkin.BaseWireMockTest;
-import com.example.cerpshashkin.dto.LoginRequest;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
